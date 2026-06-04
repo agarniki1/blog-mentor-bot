@@ -40,6 +40,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 TELEGRAM_MESSAGE_LIMIT = 4000
 SUPPORTED_LANGS = {"ru", "en", "de"}
+ZERO_WIDTH_SPACE = "\u200B"
 
 TRANSLATIONS = {
     "ru": {
@@ -243,23 +244,33 @@ def tr(lang, key):
     return TRANSLATIONS[normalize_lang(lang)][key]
 
 def clean_text(text: str) -> str:
+    if text is None:
+        return ZERO_WIDTH_SPACE
+
+    if text == ZERO_WIDTH_SPACE:
+        return text
+
     cleaned = (
-        text.replace("**", "")
-            .replace("*", "")
-            .replace("__", "")
-            .replace("_", "")
-            .replace("```", "")
-            .replace("`", "")
-            .replace("##", "")
-            .replace("#", "")
-            .strip()
+        str(text).replace("**", "")
+        .replace("*", "")
+        .replace("__", "")
+        .replace("_", "")
+        .replace("```", "")
+        .replace("`", "")
+        .replace("##", "")
+        .replace("#", "")
     )
+
     while "\n\n\n" in cleaned:
         cleaned = cleaned.replace("\n\n\n", "\n\n")
-    return cleaned.strip()
+
+    cleaned = cleaned.strip()
+
+    return cleaned if cleaned else ZERO_WIDTH_SPACE
 
 def split_text_into_chunks(text: str, limit: int = TELEGRAM_MESSAGE_LIMIT):
     text = clean_text(text)
+
     if len(text) <= limit:
         return [text]
 
@@ -888,7 +899,7 @@ async def start_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.user_data["mode"] = "onboarding"
     context.user_data["onboarding_step"] = "language"
-    await safe_reply(update.message, "‎", reply_markup=get_language_keyboard())
+    await safe_reply(update.message, ZERO_WIDTH_SPACE, reply_markup=get_language_keyboard())
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
@@ -955,7 +966,7 @@ async def show_free_chat_screen(query, context: ContextTypes.DEFAULT_TYPE):
 async def show_change_language_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["mode"] = "onboarding"
     context.user_data["onboarding_step"] = "language"
-    await safe_edit(query, "‎", reply_markup=get_language_keyboard())
+    await safe_edit(query, ZERO_WIDTH_SPACE, reply_markup=get_language_keyboard())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1056,7 +1067,7 @@ async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await finish_onboarding(update, context, user_id)
         return
 
-    await safe_reply(update.message, "‎", reply_markup=get_language_keyboard())
+    await safe_reply(update.message, ZERO_WIDTH_SPACE, reply_markup=get_language_keyboard())
 
 async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     step = context.user_data.get("step")
@@ -1174,7 +1185,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not mode:
             context.user_data["mode"] = "onboarding"
             context.user_data["onboarding_step"] = "language"
-            await safe_reply(update.message, "‎", reply_markup=get_language_keyboard())
+            await safe_reply(update.message, ZERO_WIDTH_SPACE, reply_markup=get_language_keyboard())
             return
 
     if mode == "onboarding":
