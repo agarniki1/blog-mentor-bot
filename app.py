@@ -621,8 +621,7 @@ def generate_general_response(telegram_user_id: int, user_text: str) -> str:
         return generate_blog_diagnosis_response(telegram_user_id, user_text)
 
     final_prompt = build_context_prompt(telegram_user_id, user_text)
-    draft = call_openai(final_prompt, instructions=SYSTEM_PROMPT)
-    return validate_and_improve_answer(telegram_user_id, user_text, draft, "general")
+    return call_openai(final_prompt, instructions=SYSTEM_PROMPT)
 
 def get_main_menu():
     keyboard = [
