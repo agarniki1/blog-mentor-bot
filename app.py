@@ -635,12 +635,9 @@ def get_main_menu():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def get_back_menu():
+def get_home_menu():
     keyboard = [
-        [
-            InlineKeyboardButton("⬅️ Назад", callback_data="back"),
-            InlineKeyboardButton("🏠 В меню", callback_data="main_menu"),
-        ]
+        [InlineKeyboardButton("🏠 Домой", callback_data="main_menu")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -741,7 +738,7 @@ async def show_start_blog_screen(query, context: ContextTypes.DEFAULT_TYPE):
         "4. Уже начал(а), но всё без системы\n\n"
         "Напиши цифру — и пойдём дальше."
     )
-    await safe_edit(query, text, reply_markup=get_back_menu())
+    await safe_edit(query, text, reply_markup=get_home_menu())
 
 async def show_pick_direction_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["mode"] = "pick_direction"
@@ -755,7 +752,7 @@ async def show_pick_direction_screen(query, context: ContextTypes.DEFAULT_TYPE):
         "3. С кем тебе хотелось бы говорить через блог\n\n"
         "Можно коротко и без красивых формулировок."
     )
-    await safe_edit(query, text, reply_markup=get_back_menu())
+    await safe_edit(query, text, reply_markup=get_home_menu())
 
 async def show_plan_7_days_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["mode"] = "plan_7_days"
@@ -769,7 +766,7 @@ async def show_plan_7_days_screen(query, context: ContextTypes.DEFAULT_TYPE):
         "— сколько времени ты реально готов(а) уделять в день\n\n"
         "Можно ответить совсем коротко."
     )
-    await safe_edit(query, text, reply_markup=get_back_menu())
+    await safe_edit(query, text, reply_markup=get_home_menu())
 
 async def show_analyze_blog_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["mode"] = "analyze_blog"
@@ -783,7 +780,7 @@ async def show_analyze_blog_screen(query, context: ContextTypes.DEFAULT_TYPE):
         "— что именно не работает: идеи, регулярность, охваты, вовлечённость или что-то ещё\n\n"
         "Я помогу увидеть, что тебя сейчас тормозит сильнее всего."
     )
-    await safe_edit(query, text, reply_markup=get_back_menu())
+    await safe_edit(query, text, reply_markup=get_home_menu())
 
 async def show_daily_checkin_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["mode"] = "daily_checkin"
@@ -798,7 +795,7 @@ async def show_daily_checkin_screen(query, context: ContextTypes.DEFAULT_TYPE):
         "4. Хочу понять, какой у меня один фокус на сегодня\n\n"
         "Напиши цифру или пару слов про своё состояние."
     )
-    await safe_edit(query, text, reply_markup=get_back_menu())
+    await safe_edit(query, text, reply_markup=get_home_menu())
 
 async def show_free_chat_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
@@ -809,7 +806,7 @@ async def show_free_chat_screen(query, context: ContextTypes.DEFAULT_TYPE):
         "Без правильных формулировок.\n"
         "Просто по-человечески."
     )
-    await safe_edit(query, text, reply_markup=get_back_menu())
+    await safe_edit(query, text, reply_markup=get_home_menu())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -830,21 +827,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_daily_checkin_screen(query, context)
     elif query.data == "free_chat":
         await show_free_chat_screen(query, context)
-    elif query.data == "back":
-        mode = context.user_data.get("mode")
-
-        if mode == "start_blog":
-            await show_start_blog_screen(query, context)
-        elif mode == "pick_direction":
-            await show_pick_direction_screen(query, context)
-        elif mode == "plan_7_days":
-            await show_plan_7_days_screen(query, context)
-        elif mode == "analyze_blog":
-            await show_analyze_blog_screen(query, context)
-        elif mode == "daily_checkin":
-            await show_daily_checkin_screen(query, context)
-        else:
-            await show_main_menu(query, context)
     elif query.data == "main_menu":
         await show_main_menu(query, context)
 
@@ -863,7 +845,8 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
                 "Это очень живая точка старта.\n\n"
                 "Ответь коротко на 2 вещи:\n"
                 "1. Что тебе правда было бы интересно обсуждать долго\n"
-                "2. В чём у тебя уже есть опыт, путь или насмотренность"
+                "2. В чём у тебя уже есть опыт, путь или насмотренность",
+                reply_markup=get_home_menu()
             )
             return
 
@@ -874,7 +857,8 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
                 "Это уже хорошая база.\n\n"
                 "Напиши:\n"
                 "1. Какая у тебя тема\n"
-                "2. Что сейчас сложнее всего: вести регулярно, придумывать контент или понимать, что вообще сработает"
+                "2. Что сейчас сложнее всего: вести регулярно, придумывать контент или понимать, что вообще сработает",
+                reply_markup=get_home_menu()
             )
             return
 
@@ -885,7 +869,8 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
                 "Ты не один(одна) в этом.\n\n"
                 "Скажи коротко:\n"
                 "1. Что страшнее всего — камера, мнение людей или ощущение кринжа\n"
-                "2. Тебе сейчас легче писать, чем снимать видео?"
+                "2. Тебе сейчас легче писать, чем снимать видео?",
+                reply_markup=get_home_menu()
             )
             return
 
@@ -897,16 +882,21 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
                 "Тогда проблема не в старте, а в том, что всё держится без системы.\n\n"
                 "Напиши коротко:\n"
                 "1. Где ты сейчас ведёшь блог\n"
-                "2. Что у тебя ломается сильнее всего — регулярность, идеи, мотивация или понимание стратегии"
+                "2. Что у тебя ломается сильнее всего — регулярность, идеи, мотивация или понимание стратегии",
+                reply_markup=get_home_menu()
             )
             return
 
         else:
-            await safe_reply(update.message, "Напиши, пожалуйста, только 1, 2, 3 или 4.")
+            await safe_reply(
+                update.message,
+                "Напиши, пожалуйста, только 1, 2, 3 или 4.",
+                reply_markup=get_home_menu()
+            )
             return
 
     answer = generate_general_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_main_menu())
+    await safe_reply(update.message, answer, reply_markup=get_home_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     maybe_update_memory(user_id, user_text, answer)
@@ -915,7 +905,7 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
 async def handle_pick_direction_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     answer = generate_blog_direction_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_main_menu())
+    await safe_reply(update.message, answer, reply_markup=get_home_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     maybe_update_memory(user_id, user_text, answer)
@@ -924,7 +914,7 @@ async def handle_pick_direction_flow(update: Update, context: ContextTypes.DEFAU
 async def handle_plan_7_days_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     answer = generate_7_day_plan_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_main_menu())
+    await safe_reply(update.message, answer, reply_markup=get_home_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     maybe_update_memory(user_id, user_text, answer)
@@ -933,7 +923,7 @@ async def handle_plan_7_days_flow(update: Update, context: ContextTypes.DEFAULT_
 async def handle_analyze_blog_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     answer = generate_blog_diagnosis_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_main_menu())
+    await safe_reply(update.message, answer, reply_markup=get_home_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     maybe_update_memory(user_id, user_text, answer)
@@ -962,7 +952,7 @@ async def handle_daily_checkin_flow(update: Update, context: ContextTypes.DEFAUL
 """
     draft = call_openai(prompt)
     answer = validate_and_improve_answer(user_id, user_text, draft, "daily_checkin")
-    await safe_reply(update.message, answer, reply_markup=get_main_menu())
+    await safe_reply(update.message, answer, reply_markup=get_home_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     maybe_update_memory(user_id, user_text, answer)
@@ -971,7 +961,7 @@ async def handle_daily_checkin_flow(update: Update, context: ContextTypes.DEFAUL
 async def handle_free_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     answer = generate_general_response(user_id, user_text)
-    await safe_reply(update.message, answer)
+    await safe_reply(update.message, answer, reply_markup=get_home_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     maybe_update_memory(user_id, user_text, answer)
