@@ -44,8 +44,10 @@ SUPPORTED_LANGS = {"ru", "en", "de"}
 TRANSLATIONS = {
     "ru": {
         "lang_name": "Русский",
-        "choose_language": "Привет! Давай начнём со знакомства. Выбери язык:",
-        "language_saved": "Готово. Теперь буду говорить с тобой на русском.",
+        "onboarding_intro": (
+            "Привет! Я Anna — SMM-ментор по запуску и ведению блога.\n\n"
+            "Сейчас задам пару коротких вопросов, чтобы точнее тебе отвечать."
+        ),
         "ask_name": "Как мне к тебе обращаться?",
         "ask_gender": "Какое обращение тебе ближе?",
         "gender_female": "Женщина",
@@ -54,7 +56,7 @@ TRANSLATIONS = {
         "gender_skip": "Пропустить",
         "ask_age": "Сколько тебе лет? Можно написать число или диапазон, например 25–30.",
         "ask_country": "В какой стране ты сейчас живёшь?",
-        "onboarding_done": "Супер, познакомились. Теперь можно нормально работать ✨",
+        "onboarding_done": "Супер, познакомились ✨\n\nВыбери, с чего хочешь начать:",
         "main_intro": (
             "Привет! ✨\n\n"
             "Я Anna — SMM-ментор по запуску и ведению блога в Instagram и Telegram.\n\n"
@@ -128,8 +130,10 @@ TRANSLATIONS = {
     },
     "en": {
         "lang_name": "English",
-        "choose_language": "Hi! Let’s start with a quick intro. Choose your language:",
-        "language_saved": "Done. I’ll speak with you in English.",
+        "onboarding_intro": (
+            "Hi! I’m Anna — an SMM mentor for starting and growing a blog.\n\n"
+            "I’ll ask you a couple of short questions so I can guide you more accurately."
+        ),
         "ask_name": "What should I call you?",
         "ask_gender": "What form of address feels right for you?",
         "gender_female": "Woman",
@@ -138,7 +142,7 @@ TRANSLATIONS = {
         "gender_skip": "Skip",
         "ask_age": "How old are you? You can send a number or a range like 25–30.",
         "ask_country": "Which country do you currently live in?",
-        "onboarding_done": "Great, now we know each other a bit ✨",
+        "onboarding_done": "Great, now we know each other a bit ✨\n\nChoose where you want to start:",
         "main_intro": (
             "Hi! ✨\n\n"
             "I’m Anna — an SMM mentor for starting and growing a blog on Instagram and Telegram.\n\n"
@@ -168,8 +172,10 @@ TRANSLATIONS = {
     },
     "de": {
         "lang_name": "Deutsch",
-        "choose_language": "Hallo! Lass uns kurz anfangen. Wähle deine Sprache:",
-        "language_saved": "Fertig. Ich spreche jetzt mit dir auf Deutsch.",
+        "onboarding_intro": (
+            "Hallo! Ich bin Anna — eine SMM-Mentorin für den Start und Aufbau eines Blogs.\n\n"
+            "Ich stelle dir jetzt ein paar kurze Fragen, damit ich dir passender antworten kann."
+        ),
         "ask_name": "Wie soll ich dich ansprechen?",
         "ask_gender": "Welche Anrede passt für dich am besten?",
         "gender_female": "Frau",
@@ -178,7 +184,7 @@ TRANSLATIONS = {
         "gender_skip": "Überspringen",
         "ask_age": "Wie alt bist du? Du kannst eine Zahl oder einen Bereich wie 25–30 schreiben.",
         "ask_country": "In welchem Land lebst du aktuell?",
-        "onboarding_done": "Super, jetzt kennen wir uns etwas besser ✨",
+        "onboarding_done": "Super, jetzt kennen wir uns etwas besser ✨\n\nWähle, womit du anfangen möchtest:",
         "main_intro": (
             "Hallo! ✨\n\n"
             "Ich bin Anna — eine SMM-Mentorin für den Start und Aufbau eines Blogs auf Instagram und Telegram.\n\n"
@@ -882,7 +888,7 @@ async def start_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.user_data["mode"] = "onboarding"
     context.user_data["onboarding_step"] = "language"
-    await safe_reply(update.message, "Hi! / Привет! / Hallo!\n\nChoose your language:", reply_markup=get_language_keyboard())
+    await safe_reply(update.message, "‎", reply_markup=get_language_keyboard())
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
@@ -949,9 +955,7 @@ async def show_free_chat_screen(query, context: ContextTypes.DEFAULT_TYPE):
 async def show_change_language_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["mode"] = "onboarding"
     context.user_data["onboarding_step"] = "language"
-    user_id = query.from_user.id
-    lang = get_user_language(user_id)
-    await safe_edit(query, tr(lang, "choose_language"), reply_markup=get_language_keyboard())
+    await safe_edit(query, "‎", reply_markup=get_language_keyboard())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -967,11 +971,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         context.user_data["mode"] = "onboarding"
         context.user_data["onboarding_step"] = "name"
-        await safe_edit(query, tr(selected_lang, "ask_name"))
+        await safe_edit(query, tr(selected_lang, "onboarding_intro"))
+        await query.message.reply_text(tr(selected_lang, "ask_name"))
         return
 
     if query.data.startswith("gender_"):
-        profile = get_user_profile(user_id)
         lang = get_user_language(user_id)
         gender_value = query.data.replace("gender_", "")
         if gender_value == "skip":
@@ -1020,7 +1024,6 @@ async def finish_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
-    profile = get_user_profile(user_id)
     lang = get_user_language(user_id)
     step = context.user_data.get("onboarding_step")
 
@@ -1031,7 +1034,6 @@ async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             updated_at=datetime.now(timezone.utc).isoformat()
         )
         context.user_data["onboarding_step"] = "gender"
-        lang = get_user_language(user_id)
         await safe_reply(update.message, tr(lang, "ask_gender"), reply_markup=get_gender_keyboard(lang))
         return
 
@@ -1054,7 +1056,7 @@ async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await finish_onboarding(update, context, user_id)
         return
 
-    await safe_reply(update.message, tr(lang, "choose_language"), reply_markup=get_language_keyboard())
+    await safe_reply(update.message, "‎", reply_markup=get_language_keyboard())
 
 async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     step = context.user_data.get("step")
@@ -1172,7 +1174,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not mode:
             context.user_data["mode"] = "onboarding"
             context.user_data["onboarding_step"] = "language"
-            await safe_reply(update.message, "Hi! / Привет! / Hallo!\n\nChoose your language:", reply_markup=get_language_keyboard())
+            await safe_reply(update.message, "‎", reply_markup=get_language_keyboard())
             return
 
     if mode == "onboarding":
