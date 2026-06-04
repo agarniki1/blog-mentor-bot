@@ -19,12 +19,18 @@ load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-DB_PATH = "mentor_bot.db"
+DB_PATH = os.getenv("DB_PATH", "/data/mentor_bot.db")
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     level=logging.INFO
 )
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.INFO)
+logging.getLogger("telegram.ext").setLevel(logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -290,7 +296,11 @@ User: {user_text}
 Bot: {bot_text}
 """
 
-    summary = call_openai(prompt, instructions="Ты помогаешь сжатo обновлять память о пользователе.")
+    summary = call_openai(
+        prompt,
+        instructions="Ты помогаешь сжато обновлять память о пользователе."
+    )
+
     if summary:
         update_user_memory(telegram_user_id, summary)
 
