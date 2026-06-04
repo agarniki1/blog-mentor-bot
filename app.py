@@ -74,6 +74,40 @@ SYSTEM_PROMPT = """
 пользователь должен чувствовать, что с ним говорит умный, спокойный, современный и тёплый SMM-ментор.
 """
 
+QUALITY_PROMPT = """
+Ты редактор качества для SMM-ментора Anna.
+
+Твоя задача:
+взять черновой ответ бота и сделать его сильнее, полезнее и конкретнее, но сохранить тёплый и простой тон.
+
+Проверь ответ по критериям:
+- не банальный ли он
+- не слишком ли общий
+- учитывает ли реальные вводные пользователя
+- есть ли в нём 2-3 живых варианта вместо пустых формулировок
+- есть ли конкретика вместо фраз вроде "определи ЦА", "будь регулярным", "делись опытом"
+- есть ли один ясный следующий шаг
+- чувствуется ли, что ответ написан под этого человека, а не для всех подряд
+
+Если ответ слабый:
+- перепиши его целиком сильнее
+- убери воду
+- добавь конкретику
+- сузь варианты
+- объясни, почему предлагаешь именно это
+- сделай идеи более живыми, современными и пригодными для реального блога
+
+Если ответ уже хороший:
+- просто слегка улучши формулировки и ясность
+
+Формат:
+- только plain text
+- без markdown
+- короткие абзацы
+- без канцелярита
+- без упоминания, что ты что-то "проверял" или "улучшал"
+"""
+
 def clean_text(text: str) -> str:
     cleaned = (
         text.replace("**", "")
@@ -329,6 +363,218 @@ def build_context_prompt(telegram_user_id: int, user_text: str):
 """
     return prompt
 
+def get_user_context_block(telegram_user_id: int, user_text: str):
+    memory = get_user_memory(telegram_user_id)
+    recent_messages = get_recent_messages(telegram_user_id, limit=8)
+
+    history_block = ""
+    for role, text in recent_messages:
+        history_block += f"{role}: {text}\n"
+
+    return f"""
+Память о пользователе:
+{memory if memory else "Пока нет сохранённой памяти."}
+
+Недавние сообщения:
+{history_block if history_block else "Нет истории."}
+
+Новое сообщение пользователя:
+{user_text}
+"""
+
+def classify_request(user_text: str) -> str:
+    text = user_text.lower()
+
+    topic_keywords = [
+        "о чем вести", "о чём вести", "тема блога", "направление", "ниша",
+        "какую тему", "выбрать тему", "определить тему", "направление блога"
+    ]
+    content_keywords = [
+        "идеи", "контент", "рубрики", "что снимать", "что писать",
+        "сценарии", "рилс", "reels", "сторис", "посты", "контент-план",
+        "контент план", "хуки", "темы постов"
+    ]
+    plan_keywords = [
+        "план на 7 дней", "7 дней", "на неделю", "план запуска",
+        "что делать по дням", "план на неделю"
+    ]
+    diagnose_keywords = [
+        "не работает", "нет охватов", "не идет", "не идёт", "мало просмотров",
+        "нет отклика", "нет продаж", "почему блог", "не растет", "не растёт"
+    ]
+
+    if any(keyword in text for keyword in plan_keywords):
+        return "plan_7_days"
+    if any(keyword in text for keyword in diagnose_keywords):
+        return "diagnose_blog"
+    if any(keyword in text for keyword in content_keywords):
+        return "content_ideas"
+    if any(keyword in text for keyword in topic_keywords):
+        return "blog_direction"
+
+    return "general"
+
+def validate_and_improve_answer(telegram_user_id: int, user_text: str, draft: str, answer_type: str) -> str:
+    context_block = get_user_context_block(telegram_user_id, user_text)
+
+    prompt = f"""
+Тип ответа:
+{answer_type}
+
+Контекст:
+{context_block}
+
+Черновой ответ:
+{draft}
+
+Сделай финальную версию ответа сильнее по критериям качества.
+Особенно следи за тем, чтобы:
+- не было банальных советов
+- идеи были не для всех подряд, а под этого пользователя
+- если предлагаются варианты, их было 2-3 и они были живыми
+- если это контент, дай более цепкие, современные и usable идеи
+- если это тема блога, помоги сузить выбор и понять, почему это подходит
+- если это план, каждый шаг должен быть конкретным и выполнимым
+- если это разбор, покажи главную проблему и один сильный следующий шаг
+
+Верни только финальный ответ пользователю.
+"""
+    improved = call_openai(prompt, instructions=QUALITY_PROMPT)
+    return clean_text(improved)
+
+def generate_blog_direction_response(telegram_user_id: int, user_text: str) -> str:
+    context_block = get_user_context_block(telegram_user_id, user_text)
+
+    prompt = f"""
+{context_block}
+
+Задача:
+помоги пользователю понять, о чём ему вести блог.
+
+Требования к качеству:
+- не давай 10 тем списком
+- предложи 2-3 сильных направления максимум
+- каждое направление должно быть живым, не банальным и понятным
+- объясни, почему именно это направление может подойти пользователю
+- если уместно, покажи разницу между вариантами
+- помоги сузить выбор
+- не пиши абстрактно вроде "лайфстайл", "делись опытом", "экспертный блог" без расшифровки
+- добавляй конкретику: что именно человек может говорить, для кого, через какие углы
+- в конце дай один следующий шаг
+
+Формат ответа:
+1. Коротко отрази, что ты поняла про человека
+2. Дай 2-3 направления
+3. Для каждого — в чём суть и почему это может сработать
+4. В конце — что я бы выбрала на его месте и почему
+"""
+    draft = call_openai(prompt)
+    return validate_and_improve_answer(telegram_user_id, user_text, draft, "blog_direction")
+
+def generate_content_ideas_response(telegram_user_id: int, user_text: str) -> str:
+    context_block = get_user_context_block(telegram_user_id, user_text)
+
+    prompt = f"""
+{context_block}
+
+Задача:
+дать пользователю качественные идеи контента.
+
+Требования к качеству:
+- не давай пустые идеи вроде "расскажи свою историю", "дай советы", "покажи закулисье" без конкретики
+- предложи 5-7 сильных идей максимум
+- каждая идея должна быть пригодна для реального поста / reels / stories / telegram-поста
+- для каждой идеи укажи:
+  1. саму идею
+  2. сильный угол подачи
+  3. пример хука или захода
+  4. какой формат лучше: reels / пост / stories / telegram
+- идеи должны быть цепкими, современными и не выглядеть как контент из 2020 года
+- учитывай состояние пользователя: страх, ступор, старт, отсутствие ясности, текущая тема
+- если уместно, лучше дать меньше идей, но сильнее
+
+Формат ответа:
+- коротко скажи, на что я бы делала упор в контенте
+- потом дай идеи списком
+- в конце предложи, какие 2 идеи лучше взять первыми
+"""
+    draft = call_openai(prompt)
+    return validate_and_improve_answer(telegram_user_id, user_text, draft, "content_ideas")
+
+def generate_7_day_plan_response(telegram_user_id: int, user_text: str) -> str:
+    context_block = get_user_context_block(telegram_user_id, user_text)
+
+    prompt = f"""
+{context_block}
+
+Задача:
+сделать сильный, реалистичный и небанальный план на 7 дней.
+
+Требования:
+- не пиши общие вещи без расшифровки
+- не пиши "определи ЦА", "оформи профиль", "сделай контент-план" как пустые пункты
+- каждый день = один основной фокус
+- для каждого дня укажи:
+  1. фокус дня
+  2. что конкретно сделать
+  3. какой результат должен получиться к концу дня
+- план должен быть выполнимым для человека без команды и без перегруза
+- план должен ощущаться как живой старт блога, а не как курс по маркетингу
+- учитывай текущую ситуацию пользователя
+- если человек в ступоре, делай план ещё проще и мягче
+- если тема уже есть, не возвращай его назад в точку "выбери тему", а двигай дальше
+
+Формат:
+- короткое вступление на 1-2 абзаца
+- потом дни 1-7
+- в конце: на чём не надо зацикливаться в эту неделю
+"""
+    draft = call_openai(prompt)
+    return validate_and_improve_answer(telegram_user_id, user_text, draft, "plan_7_days")
+
+def generate_blog_diagnosis_response(telegram_user_id: int, user_text: str) -> str:
+    context_block = get_user_context_block(telegram_user_id, user_text)
+
+    prompt = f"""
+{context_block}
+
+Задача:
+помочь пользователю понять, почему его блог или контент не работает.
+
+Требования:
+- не давай длинный список всех возможных проблем
+- выдели 1 главную и максимум 1 дополнительную проблему
+- объясни это простым языком
+- не пиши шаблонно
+- покажи, почему именно это похоже на его ситуацию
+- потом дай один понятный следующий шаг
+- если полезно, дай 2-3 варианта, как это исправить
+- пользователь должен почувствовать, что появилась ясность, а не ещё больше хаоса
+
+Формат:
+1. Что, скорее всего, происходит
+2. Почему я так думаю
+3. Что делать дальше
+"""
+    draft = call_openai(prompt)
+    return validate_and_improve_answer(telegram_user_id, user_text, draft, "diagnose_blog")
+
+def generate_general_response(telegram_user_id: int, user_text: str) -> str:
+    request_type = classify_request(user_text)
+
+    if request_type == "blog_direction":
+        return generate_blog_direction_response(telegram_user_id, user_text)
+    if request_type == "content_ideas":
+        return generate_content_ideas_response(telegram_user_id, user_text)
+    if request_type == "plan_7_days":
+        return generate_7_day_plan_response(telegram_user_id, user_text)
+    if request_type == "diagnose_blog":
+        return generate_blog_diagnosis_response(telegram_user_id, user_text)
+
+    final_prompt = build_context_prompt(telegram_user_id, user_text)
+    draft = call_openai(final_prompt, instructions=SYSTEM_PROMPT)
+    return validate_and_improve_answer(telegram_user_id, user_text, draft, "general")
+
 def get_main_menu():
     keyboard = [
         [InlineKeyboardButton("🚀 Начать блог с нуля", callback_data="start_blog")],
@@ -531,10 +777,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "main_menu":
         await show_main_menu(query, context)
 
-def generate_response(telegram_user_id: int, prompt: str) -> str:
-    final_prompt = build_context_prompt(telegram_user_id, prompt)
-    return call_openai(final_prompt, instructions=SYSTEM_PROMPT)
-
 async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     step = context.user_data.get("step")
     user_id = update.effective_user.id
@@ -592,8 +834,7 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
             await safe_reply(update.message, "Напиши, пожалуйста, только 1, 2, 3 или 4.")
             return
 
-    prompt = f"Пользователь в сценарии 'Начать блог с нуля'. Его ответ: {user_text}. Дай тёплый, полезный и конкретный следующий шаг как сильный SMM-ментор Anna."
-    answer = generate_response(user_id, prompt)
+    answer = generate_general_response(user_id, user_text)
     await safe_reply(update.message, answer, reply_markup=get_main_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
@@ -602,8 +843,7 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
 
 async def handle_pick_direction_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
-    prompt = f"Пользователь хочет понять, о чём ему вести блог. Вот его вводные: {user_text}. Предложи 2-3 живых направления и помоги выбрать без перегруза."
-    answer = generate_response(user_id, prompt)
+    answer = generate_blog_direction_response(user_id, user_text)
     await safe_reply(update.message, answer, reply_markup=get_main_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
@@ -612,8 +852,7 @@ async def handle_pick_direction_flow(update: Update, context: ContextTypes.DEFAU
 
 async def handle_plan_7_days_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
-    prompt = f"Пользователь хочет простой и реалистичный план запуска блога на 7 дней. Вот вводные: {user_text}. Дай живой, понятный и выполнимый 7-дневный план."
-    answer = generate_response(user_id, prompt)
+    answer = generate_7_day_plan_response(user_id, user_text)
     await safe_reply(update.message, answer, reply_markup=get_main_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
@@ -622,8 +861,7 @@ async def handle_plan_7_days_flow(update: Update, context: ContextTypes.DEFAULT_
 
 async def handle_analyze_blog_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
-    prompt = f"Пользователь хочет понять, почему блог не работает. Вот его вводные: {user_text}. Помоги спокойно увидеть главную проблему и дай один понятный следующий шаг."
-    answer = generate_response(user_id, prompt)
+    answer = generate_blog_diagnosis_response(user_id, user_text)
     await safe_reply(update.message, answer, reply_markup=get_main_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
@@ -632,8 +870,27 @@ async def handle_analyze_blog_flow(update: Update, context: ContextTypes.DEFAULT
 
 async def handle_daily_checkin_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
-    prompt = f"Пользователь прислал ежедневный check-in. Вот его ответ: {user_text}. Поддержи его спокойно и по-человечески и дай один фокус на сегодня."
-    answer = generate_response(user_id, prompt)
+    prompt = f"""
+{get_user_context_block(user_id, user_text)}
+
+Задача:
+пользователь прислал ежедневный check-in.
+
+Дай ответ так, чтобы:
+- сначала было ощущение поддержки
+- потом появилась ясность
+- потом один фокус на сегодня
+- не было давления
+- не было банальных советов
+- не было длинного списка дел
+
+Формат:
+1. короткая поддержка
+2. что, скорее всего, сейчас происходит
+3. один фокус на сегодня
+"""
+    draft = call_openai(prompt)
+    answer = validate_and_improve_answer(user_id, user_text, draft, "daily_checkin")
     await safe_reply(update.message, answer, reply_markup=get_main_menu())
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
@@ -642,7 +899,7 @@ async def handle_daily_checkin_flow(update: Update, context: ContextTypes.DEFAUL
 
 async def handle_free_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
-    answer = generate_response(user_id, user_text)
+    answer = generate_general_response(user_id, user_text)
     await safe_reply(update.message, answer)
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
