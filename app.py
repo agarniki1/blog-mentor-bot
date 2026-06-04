@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+TELEGRAM_MESSAGE_LIMIT = 4000
+
 SYSTEM_PROMPT = """
 Ты Anna — тёплый, спокойный и современный SMM-ментор по запуску и ведению блога в Instagram и Telegram.
 
@@ -56,6 +58,9 @@ SYSTEM_PROMPT = """
 - не просишь переписать сообщение, если смысл уже можно понять
 - не делаешь больше одного уточнения подряд
 - создаёшь ощущение, что рядом живой, умный и поддерживающий ментор
+- не растягивай ответ без необходимости
+- предпочитай 2-3 сильных варианта вместо длинного списка
+- обычно держи ответ компактным и не делай полотно без причины
 
 Формат:
 - только plain text
@@ -88,6 +93,8 @@ QUALITY_PROMPT = """
 - есть ли конкретика вместо фраз вроде "определи ЦА", "будь регулярным", "делись опытом"
 - есть ли один ясный следующий шаг
 - чувствуется ли, что ответ написан под этого человека, а не для всех подряд
+- не слишком ли он длинный
+- нет ли повторов и лишней воды
 
 Если ответ слабый:
 - перепиши его целиком сильнее
@@ -98,7 +105,7 @@ QUALITY_PROMPT = """
 - сделай идеи более живыми, современными и пригодными для реального блога
 
 Если ответ уже хороший:
-- просто слегка улучши формулировки и ясность
+- просто слегка улучши формулировки, ясность и плотность
 
 Формат:
 - только plain text
@@ -106,6 +113,7 @@ QUALITY_PROMPT = """
 - короткие абзацы
 - без канцелярита
 - без упоминания, что ты что-то "проверял" или "улучшал"
+- по возможности держи ответ до 3000 символов
 """
 
 def clean_text(text: str) -> str:
@@ -126,9 +134,46 @@ def clean_text(text: str) -> str:
 
     return cleaned.strip()
 
+def split_text_into_chunks(text: str, limit: int = TELEGRAM_MESSAGE_LIMIT):
+    text = clean_text(text)
+
+    if len(text) <= limit:
+        return [text]
+
+    chunks = []
+    remaining = text
+
+    while len(remaining) > limit:
+        chunk = remaining[:limit]
+
+        split_index = chunk.rfind("\n\n")
+        if split_index == -1:
+            split_index = chunk.rfind("\n")
+        if split_index == -1:
+            split_index = chunk.rfind(". ")
+        if split_index == -1:
+            split_index = chunk.rfind(" ")
+        if split_index == -1:
+            split_index = limit
+
+        part = remaining[:split_index].strip()
+        if not part:
+            part = remaining[:limit].strip()
+            split_index = limit
+
+        chunks.append(part)
+        remaining = remaining[split_index:].strip()
+
+    if remaining:
+        chunks.append(remaining)
+
+    return chunks
+
 def get_db_connection():
     try:
-        return sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=10)
+        conn.row_factory = sqlite3.Row
+        return conn
     except sqlite3.Error as e:
         logger.exception("SQLite connection error: %s", e)
         raise
@@ -137,6 +182,9 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.execute("PRAGMA synchronous=NORMAL;")
 
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -260,7 +308,7 @@ def get_user_memory(telegram_user_id: int):
         conn.close()
 
         if row:
-            return row
+            return row["summary"]
         return ""
     except sqlite3.Error as e:
         logger.exception("get_user_memory failed: %s", e)
@@ -344,8 +392,8 @@ def build_context_prompt(telegram_user_id: int, user_text: str):
     recent_messages = get_recent_messages(telegram_user_id, limit=8)
 
     history_block = ""
-    for role, text in recent_messages:
-        history_block += f"{role}: {text}\n"
+    for row in recent_messages:
+        history_block += f"{row['role']}: {row['text']}\n"
 
     prompt = f"""
 Ниже контекст пользователя для ответа.
@@ -368,8 +416,8 @@ def get_user_context_block(telegram_user_id: int, user_text: str):
     recent_messages = get_recent_messages(telegram_user_id, limit=8)
 
     history_block = ""
-    for role, text in recent_messages:
-        history_block += f"{role}: {text}\n"
+    for row in recent_messages:
+        history_block += f"{row['role']}: {row['text']}\n"
 
     return f"""
 Память о пользователе:
@@ -436,6 +484,7 @@ def validate_and_improve_answer(telegram_user_id: int, user_text: str, draft: st
 - если это тема блога, помоги сузить выбор и понять, почему это подходит
 - если это план, каждый шаг должен быть конкретным и выполнимым
 - если это разбор, покажи главную проблему и один сильный следующий шаг
+- не было лишней длины и повторов
 
 Верни только финальный ответ пользователю.
 """
@@ -598,14 +647,33 @@ def get_back_menu():
 async def safe_reply(message_obj, text, reply_markup=None):
     try:
         text = clean_text(text)
-        await message_obj.reply_text(text, reply_markup=reply_markup)
+        chunks = split_text_into_chunks(text)
+
+        for i, chunk in enumerate(chunks):
+            current_markup = reply_markup if i == len(chunks) - 1 else None
+            await message_obj.reply_text(chunk, reply_markup=current_markup)
     except TelegramError as e:
         logger.exception("reply_text failed: %s", e)
 
 async def safe_edit(query, text, reply_markup=None):
     try:
         text = clean_text(text)
-        await query.edit_message_text(text=text, reply_markup=reply_markup)
+
+        if len(text) <= TELEGRAM_MESSAGE_LIMIT:
+            await query.edit_message_text(text=text, reply_markup=reply_markup)
+            return
+
+        chunks = split_text_into_chunks(text)
+        first_chunk = chunks
+        await query.edit_message_text(text=first_chunk)
+
+        message = query.message
+        for chunk in chunks[1:-1]:
+            await message.reply_text(chunk)
+
+        if len(chunks) > 1:
+            await message.reply_text(chunks[-1], reply_markup=reply_markup)
+
     except BadRequest as e:
         if "Message is not modified" in str(e):
             logger.info("Skipped edit: message is not modified")
@@ -745,7 +813,10 @@ async def show_free_chat_screen(query, context: ContextTypes.DEFAULT_TYPE):
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    try:
+        await query.answer()
+    except TelegramError as e:
+        logger.exception("callback answer failed: %s", e)
 
     if query.data == "start_blog":
         await show_start_blog_screen(query, context)
