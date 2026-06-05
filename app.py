@@ -45,6 +45,11 @@ MENU_PLACEHOLDER = "…"
 TRANSLATIONS = {
     "ru": {
         "lang_name": "Русский",
+        "language_picker": "Выбери язык / Choose language / Sprache wählen",
+        "empty_input": "Пожалуйста, отправь текстовое сообщение.",
+        "empty_reply_fallback": "Извини, ответ получился пустым. Попробуй ещё раз.",
+        "technical_fallback": "Извини, произошла техническая ошибка. Попробуй ещё раз.",
+        "ui_fallback": "Произошла ошибка интерфейса. Попробуй ещё раз.",
         "onboarding_intro": (
             "Привет! Я Anna — SMM-ментор по запуску и ведению блога.\n\n"
             "Сейчас задам пару коротких вопросов, чтобы точнее тебе отвечать."
@@ -131,6 +136,11 @@ TRANSLATIONS = {
     },
     "en": {
         "lang_name": "English",
+        "language_picker": "Choose language / Выбери язык / Sprache wählen",
+        "empty_input": "Please send a text message.",
+        "empty_reply_fallback": "Sorry, the reply came back empty. Please try again.",
+        "technical_fallback": "Sorry, a technical error occurred. Please try again.",
+        "ui_fallback": "An interface error occurred. Please try again.",
         "onboarding_intro": (
             "Hi! I’m Anna — an SMM mentor for starting and growing a blog.\n\n"
             "I’ll ask you a couple of short questions so I can guide you more accurately."
@@ -158,7 +168,13 @@ TRANSLATIONS = {
         "menu_free_chat": "💬 Free chat",
         "menu_language": "🌐 Change language",
         "menu_home": "🏠 Home",
-        "start_blog_screen": "Which situation feels closest right now?\n\n1. I want to start, but can’t choose a topic\n2. I have a topic, but don’t know how to run the blog\n3. I’m afraid to show up and publish\n4. I already started, but there’s no system",
+        "start_blog_screen": (
+            "Which situation feels closest right now?\n\n"
+            "1. I want to start, but can’t choose a topic\n"
+            "2. I have a topic, but don’t know how to run the blog\n"
+            "3. I’m afraid to show up and publish\n"
+            "4. I already started, but there’s no system"
+        ),
         "pick_direction_screen": "Write 3 short things:\n1. What genuinely interests you\n2. What you already have experience in\n3. Who you’d like to talk to through your blog",
         "plan_screen": "Write:\n— what your blog may be about\n— where you want to start: Instagram, Telegram or both\n— how much time you can realistically spend daily",
         "analyze_screen": "Write in 2–4 lines:\n— what your blog is about\n— what you are already doing\n— what exactly isn’t working",
@@ -173,6 +189,11 @@ TRANSLATIONS = {
     },
     "de": {
         "lang_name": "Deutsch",
+        "language_picker": "Sprache wählen / Choose language / Выбери язык",
+        "empty_input": "Bitte sende eine Textnachricht.",
+        "empty_reply_fallback": "Entschuldige, die Antwort war leer. Bitte versuche es noch einmal.",
+        "technical_fallback": "Entschuldige, es ist ein technischer Fehler aufgetreten. Bitte versuche es noch einmal.",
+        "ui_fallback": "Es gab einen Oberflächenfehler. Bitte versuche es noch einmal.",
         "onboarding_intro": (
             "Hallo! Ich bin Anna — eine SMM-Mentorin für den Start und Aufbau eines Blogs.\n\n"
             "Ich stelle dir jetzt ein paar kurze Fragen, damit ich dir passender antworten kann."
@@ -200,7 +221,13 @@ TRANSLATIONS = {
         "menu_free_chat": "💬 Freier Chat",
         "menu_language": "🌐 Sprache ändern",
         "menu_home": "🏠 Start",
-        "start_blog_screen": "Welche Situation passt gerade am ehesten?\n\n1. Ich will anfangen, kann aber kein Thema wählen\n2. Ich habe ein Thema, weiß aber nicht, wie ich den Blog führen soll\n3. Ich habe Angst, mich zu zeigen und zu posten\n4. Ich habe schon angefangen, aber ohne System",
+        "start_blog_screen": (
+            "Welche Situation passt gerade am ehesten?\n\n"
+            "1. Ich will anfangen, kann aber kein Thema wählen\n"
+            "2. Ich habe ein Thema, weiß aber nicht, wie ich den Blog führen soll\n"
+            "3. Ich habe Angst, mich zu zeigen und zu posten\n"
+            "4. Ich habe schon angefangen, aber ohne System"
+        ),
         "pick_direction_screen": "Schreib 3 kurze Dinge:\n1. Was dich wirklich interessiert\n2. Worin du schon Erfahrung hast\n3. Mit wem du über deinen Blog sprechen willst",
         "plan_screen": "Schreib:\n— worum es in deinem Blog ungefähr gehen soll\n— wo du starten willst: Instagram, Telegram oder beides\n— wie viel Zeit du täglich realistisch investieren kannst",
         "analyze_screen": "Schreib in 2–4 Zeilen:\n— worum es in deinem Blog geht\n— was du schon machst\n— was genau nicht funktioniert",
@@ -297,7 +324,7 @@ def split_text_into_chunks(text: str, limit: int = TELEGRAM_MESSAGE_LIMIT):
     if remaining:
         chunks.append(remaining)
 
-    return chunks
+    return [chunk for chunk in chunks if chunk and chunk.strip()]
 
 def normalize_database_url(url: str) -> str:
     if not url:
@@ -402,7 +429,6 @@ def save_user(update: Update):
         now,
         now
     ))
-
     conn.commit()
     cur.close()
     conn.close()
@@ -592,7 +618,20 @@ def call_openai(prompt: str, lang: str, profile: dict | None = None, instruction
             instructions=final_instructions,
             input=prompt
         )
-        return clean_text(response.output_text)
+
+        output_text = getattr(response, "output_text", None)
+        cleaned = clean_text(output_text)
+
+        if not cleaned or cleaned == MENU_PLACEHOLDER:
+            logger.warning("OpenAI returned empty output_text. prompt=%r", prompt[:500])
+            fallback = {
+                "ru": "Извини, у меня сейчас не получилось сформулировать ответ. Напиши ещё раз одним сообщением.",
+                "en": "Sorry, I couldn't generate a proper reply just now. Please send your message again.",
+                "de": "Entschuldige, ich konnte gerade keine passende Antwort erzeugen. Schreib bitte noch einmal."
+            }
+            return fallback.get(normalize_lang(lang), fallback["en"])
+
+        return cleaned
     except Exception as e:
         logger.exception("OpenAI request failed: %s", e)
         fallback = {
@@ -637,7 +676,7 @@ Bot: {bot_text}
         lang=lang,
         instructions="Ты помогаешь сжато обновлять память о пользователе. Верни summary на языке пользователя."
     )
-    if summary:
+    if summary and summary != MENU_PLACEHOLDER:
         update_user_memory(telegram_user_id, summary)
 
 def build_context_prompt(telegram_user_id: int, user_text: str):
@@ -853,50 +892,92 @@ def get_home_menu(lang: str):
         [InlineKeyboardButton(tr(lang, "menu_home"), callback_data="main_menu")]
     ])
 
-async def safe_reply(message_obj, text, reply_markup=None):
+async def safe_reply(message_obj, chunk, current_markup=None):
+    user_lang = "ru"
     try:
-        text = clean_text(text)
-        chunks = split_text_into_chunks(text)
+        if getattr(message_obj, "chat", None):
+            user_lang = normalize_lang(getattr(message_obj.from_user, "language_code", "ru"))
+    except Exception:
+        pass
 
-        for i, chunk in enumerate(chunks):
-            current_markup = reply_markup if i == len(chunks) - 1 else None
-            await message_obj.reply_text(chunk, reply_markup=current_markup)
-    except TelegramError as e:
+    logger.info("safe_reply chunk repr: %r", chunk)
+
+    text = clean_text(chunk)
+
+    if not text or text == MENU_PLACEHOLDER:
+        logger.warning("Empty reply detected, sending fallback text")
+        text = tr(user_lang, "empty_reply_fallback")
+
+    chunks = split_text_into_chunks(text)
+
+    try:
+        if len(chunks) == 1:
+            await message_obj.reply_text(chunks, reply_markup=current_markup)
+            return
+
+        for part in chunks[:-1]:
+            await message_obj.reply_text(part)
+
+        await message_obj.reply_text(chunks[-1], reply_markup=current_markup)
+
+    except BadRequest as e:
         logger.exception("reply_text failed: %s", e)
+        fallback = tr(user_lang, "technical_fallback")
+        await message_obj.reply_text(fallback)
 
 async def safe_edit(query, text, reply_markup=None):
     try:
-        text = clean_text(text)
+        query_lang = normalize_lang(getattr(query.from_user, "language_code", "ru"))
+        cleaned = clean_text(text)
 
-        if len(text) <= TELEGRAM_MESSAGE_LIMIT:
-            await query.edit_message_text(text=text, reply_markup=reply_markup)
+        if not cleaned or cleaned == MENU_PLACEHOLDER:
+            cleaned = tr(query_lang, "language_picker")
+
+        chunks = split_text_into_chunks(cleaned)
+
+        if len(chunks) == 1:
+            await query.edit_message_text(text=chunks, reply_markup=reply_markup)
             return
 
-        chunks = split_text_into_chunks(text)
         await query.edit_message_text(text=chunks)
 
-        for chunk in chunks[1:-1]:
-            await query.message.reply_text(chunk)
+        for part in chunks[1:-1]:
+            await query.message.reply_text(part)
 
-        if len(chunks) > 1:
-            await query.message.reply_text(chunks[-1], reply_markup=reply_markup)
+        await query.message.reply_text(chunks[-1], reply_markup=reply_markup)
+
     except BadRequest as e:
         if "Message is not modified" in str(e):
             logger.info("Skipped edit: message is not modified")
         else:
             logger.exception("BadRequest on edit_message_text: %s", e)
+            try:
+                fallback = tr(normalize_lang(getattr(query.from_user, "language_code", "ru")), "ui_fallback")
+                await query.message.reply_text(fallback, reply_markup=reply_markup)
+            except Exception:
+                logger.exception("Fallback after safe_edit failed")
     except TelegramError as e:
         logger.exception("edit_message_text failed: %s", e)
+        try:
+            fallback = tr(normalize_lang(getattr(query.from_user, "language_code", "ru")), "ui_fallback")
+            await query.message.reply_text(fallback, reply_markup=reply_markup)
+        except Exception:
+            logger.exception("Fallback after TelegramError in safe_edit failed")
 
 async def send_main_menu_message(target, lang: str):
-    await safe_reply(target, tr(lang, "main_intro"), reply_markup=get_main_menu(lang))
+    await safe_reply(target, tr(lang, "main_intro"), current_markup=get_main_menu(lang))
 
 async def start_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
     context.user_data.clear()
     context.user_data["mode"] = "onboarding"
     context.user_data["onboarding_step"] = "language"
-    await safe_reply(update.message, MENU_PLACEHOLDER, reply_markup=get_language_keyboard())
+    lang = normalize_lang(getattr(update.effective_user, "language_code", "ru"))
+    await safe_reply(
+        update.message,
+        tr(lang, "language_picker"),
+        current_markup=get_language_keyboard()
+    )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
@@ -915,7 +996,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
-    await safe_reply(update.message, tr(lang, "help"), reply_markup=get_main_menu(lang))
+    await safe_reply(update.message, tr(lang, "help"), current_markup=get_main_menu(lang))
 
 async def show_main_menu(query, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
@@ -963,7 +1044,8 @@ async def show_free_chat_screen(query, context: ContextTypes.DEFAULT_TYPE):
 async def show_change_language_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["mode"] = "onboarding"
     context.user_data["onboarding_step"] = "language"
-    await safe_edit(query, MENU_PLACEHOLDER, reply_markup=get_language_keyboard())
+    lang = normalize_lang(getattr(query.from_user, "language_code", "ru"))
+    await safe_edit(query, tr(lang, "language_picker"), reply_markup=get_language_keyboard())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1027,7 +1109,7 @@ async def finish_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     await safe_reply(
         update.message,
         tr(lang, "onboarding_done"),
-        reply_markup=get_main_menu(lang)
+        current_markup=get_main_menu(lang)
     )
 
 async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
@@ -1042,7 +1124,7 @@ async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             updated_at=datetime.now(timezone.utc).isoformat()
         )
         context.user_data["onboarding_step"] = "gender"
-        await safe_reply(update.message, tr(lang, "ask_gender"), reply_markup=get_gender_keyboard(lang))
+        await safe_reply(update.message, tr(lang, "ask_gender"), current_markup=get_gender_keyboard(lang))
         return
 
     if step == "age":
@@ -1064,7 +1146,7 @@ async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await finish_onboarding(update, context, user_id)
         return
 
-    await safe_reply(update.message, MENU_PLACEHOLDER, reply_markup=get_language_keyboard())
+    await safe_reply(update.message, tr(lang, "language_picker"), current_markup=get_language_keyboard())
 
 async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     step = context.user_data.get("step")
@@ -1076,26 +1158,26 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
 
         if choice == "1":
             context.user_data["step"] = "awaiting_answer_for_choice_1"
-            await safe_reply(update.message, tr(lang, "start_choice_1"), reply_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_1"), current_markup=get_home_menu(lang))
             return
         elif choice == "2":
             context.user_data["step"] = "awaiting_answer_for_choice_2"
-            await safe_reply(update.message, tr(lang, "start_choice_2"), reply_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_2"), current_markup=get_home_menu(lang))
             return
         elif choice == "3":
             context.user_data["step"] = "awaiting_answer_for_choice_3"
-            await safe_reply(update.message, tr(lang, "start_choice_3"), reply_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_3"), current_markup=get_home_menu(lang))
             return
         elif choice == "4":
             context.user_data["step"] = "awaiting_answer_for_choice_4"
-            await safe_reply(update.message, tr(lang, "start_choice_4"), reply_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_4"), current_markup=get_home_menu(lang))
             return
         else:
-            await safe_reply(update.message, tr(lang, "start_choice_invalid"), reply_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_invalid"), current_markup=get_home_menu(lang))
             return
 
     answer = generate_general_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     if len(user_text) > 40:
@@ -1106,7 +1188,7 @@ async def handle_pick_direction_flow(update: Update, context: ContextTypes.DEFAU
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
     answer = generate_blog_direction_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     if len(user_text) > 40:
@@ -1117,7 +1199,7 @@ async def handle_plan_7_days_flow(update: Update, context: ContextTypes.DEFAULT_
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
     answer = generate_7_day_plan_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     if len(user_text) > 40:
@@ -1128,7 +1210,7 @@ async def handle_analyze_blog_flow(update: Update, context: ContextTypes.DEFAULT
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
     answer = generate_blog_diagnosis_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     if len(user_text) > 40:
@@ -1144,17 +1226,16 @@ async def handle_daily_checkin_flow(update: Update, context: ContextTypes.DEFAUL
 {get_user_context_block(user_id, user_text)}
 
 Задача:
-пользователь прислал ежедневный check-in.
+помочь пользователю сделать мягкий и полезный daily check-in.
 
-Дай ответ так, чтобы:
-- сначала была поддержка
-- потом ясность
-- потом один фокус на сегодня
-- без давления
-- компактно
+Требования:
+- будь поддерживающей
+- помоги увидеть главное
+- дай один понятный следующий шаг
+- не перегружай
 """
     answer = call_openai(prompt, lang=lang, profile=profile)
-    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     if len(user_text) > 40:
@@ -1165,7 +1246,7 @@ async def handle_free_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, u
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
     answer = generate_general_response(user_id, user_text)
-    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
     if len(user_text) > 40:
@@ -1174,7 +1255,19 @@ async def handle_free_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, u
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
     user_id = update.effective_user.id
+
+    if not update.message or update.message.text is None:
+        logger.warning("handle_message got update without text from user_id=%s", user_id)
+        return
+
     user_text = update.message.text.strip()
+    logger.info("Incoming message from user_id=%s text=%r", user_id, user_text)
+
+    if not user_text:
+        lang = get_user_language(user_id)
+        await safe_reply(update.message, tr(lang, "empty_input"))
+        return
+
     mode = context.user_data.get("mode")
     profile = get_user_profile(user_id)
 
@@ -1182,7 +1275,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not mode:
             context.user_data["mode"] = "onboarding"
             context.user_data["onboarding_step"] = "language"
-            await safe_reply(update.message, MENU_PLACEHOLDER, reply_markup=get_language_keyboard())
+            lang = normalize_lang(getattr(update.effective_user, "language_code", "ru"))
+            await safe_reply(
+                update.message,
+                tr(lang, "language_picker"),
+                current_markup=get_language_keyboard()
+            )
             return
 
     if mode == "onboarding":
@@ -1212,11 +1310,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await handle_free_chat(update, context, user_text)
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.exception("Exception while handling update:", exc_info=context.error)
+    logger.exception("Exception while handling update", exc_info=context.error)
 
 def main():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL is not set")
+    if not TELEGRAM_BOT_TOKEN:
+        raise ValueError("TELEGRAM_BOT_TOKEN is not set")
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not set")
 
     init_db()
 
