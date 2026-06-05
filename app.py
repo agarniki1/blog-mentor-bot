@@ -1334,10 +1334,6 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 def main():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL is not set")
-    if not TELEGRAM_BOT_TOKEN:
-        raise ValueError("TELEGRAM_BOT_TOKEN is not set")
-    if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY is not set")
 
     init_db()
 
@@ -1350,11 +1346,12 @@ def main():
         .build()
     )
 
-   app.add_handler(CommandHandler("start", start))
-   app.add_handler(CommandHandler("help", help_command))
-   app.add_handler(CommandHandler("resetme", resetme))
-  app.add_handler(CallbackQueryHandler(button_handler))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("resetme", resetme))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_error_handler(error_handler)
 
     logger.info("Bot is running...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
