@@ -26,7 +26,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    level=logging.INFO
+    level=logging.INFO,
 )
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -40,38 +40,29 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 TELEGRAM_MESSAGE_LIMIT = 4000
 SUPPORTED_LANGS = {"ru", "en", "de"}
-MENU_PLACEHOLDER = "…"
 
 TRANSLATIONS = {
     "ru": {
         "lang_name": "Русский",
-        "language_picker": "Выбери язык / Choose language / Sprache wählen",
-        "empty_input": "Пожалуйста, отправь текстовое сообщение.",
-        "empty_reply_fallback": "Извини, ответ получился пустым. Попробуй ещё раз.",
-        "technical_fallback": "Извини, произошла техническая ошибка. Попробуй ещё раз.",
-        "ui_fallback": "Произошла ошибка интерфейса. Попробуй ещё раз.",
-        "onboarding_intro": (
-            "Привет! Я Anna — SMM-ментор по запуску и ведению блога.\n\n"
-            "Сейчас задам пару коротких вопросов, чтобы точнее тебе отвечать."
+        "onboarding_hi": "Hi! / Привет! / Hallo!",
+        "onboarding_gender": "Как к тебе лучше обращаться?",
+        "onboarding_country": "В какой стране ты сейчас живёшь?",
+        "onboarding_done": (
+            "Готово ✨\n\n"
+            "Я Anna — SMM-ментор по запуску и ведению блога в Instagram и Telegram.\n\n"
+            "Помогаю, если:\n"
+            "— давно хочешь начать блог, но всё время что-то тормозит\n"
+            "— уже ведёшь, но не понимаешь, почему не работает\n"
+            "— не знаешь, о чём писать и как сделать всё без перегруза\n\n"
+            "С чего начнём?"
         ),
-        "ask_name": "Как мне к тебе обращаться?",
-        "ask_gender": "Какое обращение тебе ближе?",
         "gender_female": "Женщина",
         "gender_male": "Мужчина",
-        "gender_neutral": "Нейтрально",
-        "gender_skip": "Пропустить",
-        "ask_age": "Сколько тебе лет? Можно написать число или диапазон, например 25–30.",
-        "ask_country": "В какой стране ты сейчас живёшь?",
-        "onboarding_done": "Супер, познакомились ✨\n\nВыбери, с чего хочешь начать:",
-        "main_intro": (
-            "Привет! ✨\n\n"
-            "Я Anna — SMM-ментор по запуску и ведению блога в Instagram и Telegram.\n\n"
-            "Я рядом, если:\n"
-            "— давно хочешь начать блог, но всё время что-то стопорит\n"
-            "— уже ведёшь, но не понимаешь, почему не идёт\n"
-            "— не знаешь, о чём писать и как сделать всё без перегруза\n\n"
-            "Выбери, с чего хочешь начать:"
-        ),
+        "gender_skip": "Не указывать",
+        "start_want_blog": "🚀 Хочу начать блог",
+        "start_not_working": "🔍 Уже веду, но не идёт",
+        "start_no_idea": "🧭 Не знаю, о чём писать",
+        "start_focus": "☀️ Мне нужен фокус на сегодня",
         "help": (
             "Я могу помочь тебе с таким:\n\n"
             "— начать блог с нуля\n"
@@ -81,6 +72,11 @@ TRANSLATIONS = {
             "— понять, что делать сегодня, если всё встало\n\n"
             "Если не хочется выбирать сценарий, просто напиши мне как есть."
         ),
+        "main_intro": (
+            "Привет! ✨\n\n"
+            "Я Anna — SMM-ментор по запуску и ведению блога в Instagram и Telegram.\n\n"
+            "Выбери, с чего хочешь начать:"
+        ),
         "menu_start_blog": "🚀 Начать блог с нуля",
         "menu_pick_direction": "🧭 Определить тему и направление",
         "menu_plan": "📅 План на 7 дней",
@@ -89,6 +85,21 @@ TRANSLATIONS = {
         "menu_free_chat": "💬 Свободный чат",
         "menu_language": "🌐 Сменить язык",
         "menu_home": "🏠 Домой",
+        "prestart_want_blog_text": (
+            "Поняла.\n\n"
+            "Чаще всего здесь проблема не в лени, а в перегрузе и отсутствии ясной точки старта."
+        ),
+        "prestart_not_working_text": (
+            "Похоже, ты уже что-то делаешь, но пока не видишь отдачи."
+        ),
+        "prestart_no_idea_text": (
+            "Это нормальная точка.\n\n"
+            "Обычно здесь не нужен идеальный выбор — нужна рабочая тема, с которой можно начать."
+        ),
+        "prestart_focus_text": (
+            "Окей.\n\n"
+            "Тогда пойдём не в большие планы, а в один понятный шаг на сегодня."
+        ),
         "start_blog_screen": (
             "Давай спокойно начнём с базы.\n\n"
             "Что сейчас ближе всего к твоей ситуации?\n\n"
@@ -99,18 +110,21 @@ TRANSLATIONS = {
             "Напиши цифру — и пойдём дальше."
         ),
         "pick_direction_screen": (
+            "Давай попробуем найти направление, которое тебе правда подойдёт.\n\n"
             "Напиши коротко 3 вещи:\n\n"
             "1. Что тебе по-настоящему интересно\n"
             "2. В чём у тебя уже есть опыт или насмотренность\n"
             "3. С кем тебе хотелось бы говорить через блог"
         ),
         "plan_screen": (
-            "Напиши:\n\n"
+            "Соберу тебе простой и живой план на 7 дней — без перегруза.\n\n"
+            "Перед этим напиши:\n\n"
             "— о чём ты примерно хочешь вести блог\n"
             "— где тебе ближе начать: Instagram, Telegram или оба\n"
             "— сколько времени ты реально готов(а) уделять в день"
         ),
         "analyze_screen": (
+            "Окей, давай спокойно посмотрим, где сейчас затык.\n\n"
             "Напиши в 2–4 строках:\n\n"
             "— о чём у тебя блог\n"
             "— что ты уже делаешь\n"
@@ -118,6 +132,7 @@ TRANSLATIONS = {
         ),
         "checkin_screen": (
             "Быстрый check-in ☀️\n\n"
+            "Что сегодня ближе всего?\n\n"
             "1. Ничего не сделал(а)\n"
             "2. Что-то сделал(а), но как будто мало\n"
             "3. Застрял(а) и не понимаю, куда двигаться\n"
@@ -125,41 +140,70 @@ TRANSLATIONS = {
         ),
         "free_chat_screen": (
             "Ты в свободном чате.\n\n"
-            "Можешь написать как есть: про блог, контент, страх проявляться, Instagram, Telegram или просто про ступор."
+            "Можешь написать как есть: про блог, тему, контент, страх проявляться или просто про ступор."
         ),
         "start_choice_invalid": "Напиши, пожалуйста, только 1, 2, 3 или 4.",
-        "start_choice_1": "Ответь коротко: что тебе было бы интересно обсуждать долго и в чём у тебя уже есть опыт или путь?",
-        "start_choice_2": "Напиши: какая у тебя тема и что сейчас сложнее всего — регулярность, контент или понимание, что сработает?",
-        "start_choice_3": "Скажи коротко: что страшнее всего — камера, мнение людей или ощущение кринжа?",
-        "start_choice_4": "Напиши: где ты сейчас ведёшь блог и что ломается сильнее всего — регулярность, идеи, мотивация или стратегия?",
+        "start_choice_1": (
+            "Это очень живая точка старта.\n\n"
+            "Ответь коротко на 2 вещи:\n"
+            "1. Что тебе правда было бы интересно обсуждать долго\n"
+            "2. В чём у тебя уже есть опыт, путь или насмотренность"
+        ),
+        "start_choice_2": (
+            "Это уже хорошая база.\n\n"
+            "Напиши:\n"
+            "1. Какая у тебя тема\n"
+            "2. Что сейчас сложнее всего"
+        ),
+        "start_choice_3": (
+            "Ты не один(одна) в этом.\n\n"
+            "Скажи коротко:\n"
+            "1. Что страшнее всего\n"
+            "2. Тебе сейчас легче писать, чем снимать видео?"
+        ),
+        "start_choice_4": (
+            "Поняла.\n\n"
+            "Тогда проблема не в старте, а в том, что всё держится без системы.\n\n"
+            "Напиши коротко:\n"
+            "1. Где ты сейчас ведёшь блог\n"
+            "2. Что ломается сильнее всего"
+        ),
         "openai_language_instruction": "Отвечай строго на русском языке.",
     },
     "en": {
         "lang_name": "English",
-        "language_picker": "Choose language / Выбери язык / Sprache wählen",
-        "empty_input": "Please send a text message.",
-        "empty_reply_fallback": "Sorry, the reply came back empty. Please try again.",
-        "technical_fallback": "Sorry, a technical error occurred. Please try again.",
-        "ui_fallback": "An interface error occurred. Please try again.",
-        "onboarding_intro": (
-            "Hi! I’m Anna — an SMM mentor for starting and growing a blog.\n\n"
-            "I’ll ask you a couple of short questions so I can guide you more accurately."
+        "onboarding_hi": "Hi! / Привет! / Hallo!",
+        "onboarding_gender": "How should I address you?",
+        "onboarding_country": "Which country do you currently live in?",
+        "onboarding_done": (
+            "Done ✨\n\n"
+            "I’m Anna — an SMM mentor for starting and growing a blog on Instagram and Telegram.\n\n"
+            "I can help if:\n"
+            "— you’ve wanted to start a blog for a while but keep getting stuck\n"
+            "— you already post but don’t understand why it isn’t working\n"
+            "— you don’t know what to post about or how to do it without overload\n\n"
+            "Where do you want to start?"
         ),
-        "ask_name": "What should I call you?",
-        "ask_gender": "What form of address feels right for you?",
-        "gender_female": "Woman",
-        "gender_male": "Man",
-        "gender_neutral": "Neutral",
-        "gender_skip": "Skip",
-        "ask_age": "How old are you? You can send a number or a range like 25–30.",
-        "ask_country": "Which country do you currently live in?",
-        "onboarding_done": "Great, now we know each other a bit ✨\n\nChoose where you want to start:",
+        "gender_female": "Female",
+        "gender_male": "Male",
+        "gender_skip": "Prefer not to say",
+        "start_want_blog": "🚀 I want to start a blog",
+        "start_not_working": "🔍 I already post, but it’s not working",
+        "start_no_idea": "🧭 I don’t know what to post about",
+        "start_focus": "☀️ I need a focus for today",
+        "help": (
+            "I can help with:\n\n"
+            "— starting a blog from scratch\n"
+            "— figuring out your topic\n"
+            "— building a simple 7-day plan\n"
+            "— understanding why your blog is not working\n"
+            "— finding today’s focus"
+        ),
         "main_intro": (
             "Hi! ✨\n\n"
             "I’m Anna — an SMM mentor for starting and growing a blog on Instagram and Telegram.\n\n"
             "Choose where you want to start:"
         ),
-        "help": "I can help you start a blog, choose a topic, create a 7-day plan, analyze what’s not working, or simply think through your next step.",
         "menu_start_blog": "🚀 Start a blog from scratch",
         "menu_pick_direction": "🧭 Find topic and direction",
         "menu_plan": "📅 7-day plan",
@@ -168,51 +212,124 @@ TRANSLATIONS = {
         "menu_free_chat": "💬 Free chat",
         "menu_language": "🌐 Change language",
         "menu_home": "🏠 Home",
+        "prestart_want_blog_text": (
+            "Got it.\n\n"
+            "Most often, the issue here is not laziness, but overload and lack of a clear starting point."
+        ),
+        "prestart_not_working_text": (
+            "It looks like you're already doing something, but not seeing results yet."
+        ),
+        "prestart_no_idea_text": (
+            "This is a normal place to be.\n\n"
+            "Usually you don't need the perfect choice — you need a workable topic to start with."
+        ),
+        "prestart_focus_text": (
+            "Okay.\n\n"
+            "Then let’s not go into big plans, but into one clear step for today."
+        ),
         "start_blog_screen": (
-            "Which situation feels closest right now?\n\n"
-            "1. I want to start, but can’t choose a topic\n"
-            "2. I have a topic, but don’t know how to run the blog\n"
+            "Let’s start calmly with the basics.\n\n"
+            "Which situation feels closest to you right now?\n\n"
+            "1. I want to start, but I can’t choose a topic\n"
+            "2. I have a topic, but I don’t know how to run the blog\n"
             "3. I’m afraid to show up and publish\n"
             "4. I already started, but there’s no system"
         ),
-        "pick_direction_screen": "Write 3 short things:\n1. What genuinely interests you\n2. What you already have experience in\n3. Who you’d like to talk to through your blog",
-        "plan_screen": "Write:\n— what your blog may be about\n— where you want to start: Instagram, Telegram or both\n— how much time you can realistically spend daily",
-        "analyze_screen": "Write in 2–4 lines:\n— what your blog is about\n— what you are already doing\n— what exactly isn’t working",
-        "checkin_screen": "Quick check-in ☀️\n1. I did nothing today\n2. I did something, but it feels too little\n3. I’m stuck\n4. I want one clear focus for today",
-        "free_chat_screen": "You’re in free chat mode. Just write naturally about your blog, content, fear of showing up, Instagram, Telegram, or your current block.",
+        "pick_direction_screen": (
+            "Let’s find a direction that actually fits you.\n\n"
+            "Write 3 short things:\n\n"
+            "1. What genuinely interests you\n"
+            "2. What you already have experience in\n"
+            "3. Who you’d like to talk to through your blog"
+        ),
+        "plan_screen": (
+            "I’ll build you a simple and realistic 7-day plan.\n\n"
+            "Before that, write:\n\n"
+            "— what your blog is roughly about\n"
+            "— where you want to start: Instagram, Telegram, or both\n"
+            "— how much time you can realistically spend per day"
+        ),
+        "analyze_screen": (
+            "Okay, let’s calmly look at where the bottleneck is.\n\n"
+            "Write in 2–4 lines:\n\n"
+            "— what your blog is about\n"
+            "— what you’re already doing\n"
+            "— what exactly isn’t working"
+        ),
+        "checkin_screen": (
+            "Quick check-in ☀️\n\n"
+            "What feels closest today?\n\n"
+            "1. I did nothing today\n"
+            "2. I did something, but it feels like too little\n"
+            "3. I’m stuck and don’t know where to move next\n"
+            "4. I want one clear focus for today"
+        ),
+        "free_chat_screen": (
+            "You’re in free chat mode.\n\n"
+            "You can write as you are: about your blog, topic, content, fear of showing up, or just your current block."
+        ),
         "start_choice_invalid": "Please send only 1, 2, 3, or 4.",
-        "start_choice_1": "Answer briefly: what could you talk about for a long time, and where do you already have experience or perspective?",
-        "start_choice_2": "Write: what your topic is and what feels hardest right now — consistency, content, or understanding what works?",
-        "start_choice_3": "Tell me briefly: what feels scariest — camera, people’s opinions, or cringe?",
-        "start_choice_4": "Write: where you post now and what breaks most — consistency, ideas, motivation, or strategy?",
+        "start_choice_1": (
+            "That’s a very real starting point.\n\n"
+            "Answer these 2 things briefly:\n"
+            "1. What could you genuinely talk about for a long time?\n"
+            "2. What do you already have experience in?"
+        ),
+        "start_choice_2": (
+            "That’s already a good base.\n\n"
+            "Write:\n"
+            "1. What your topic is\n"
+            "2. What feels hardest right now"
+        ),
+        "start_choice_3": (
+            "You’re not alone in this.\n\n"
+            "Tell me briefly:\n"
+            "1. What feels scariest\n"
+            "2. Is writing easier for you right now than filming videos?"
+        ),
+        "start_choice_4": (
+            "Got it.\n\n"
+            "Then the issue is not starting — it’s that everything is running without a system.\n\n"
+            "Write briefly:\n"
+            "1. Where you currently post\n"
+            "2. What breaks most"
+        ),
         "openai_language_instruction": "Reply strictly in English.",
     },
     "de": {
         "lang_name": "Deutsch",
-        "language_picker": "Sprache wählen / Choose language / Выбери язык",
-        "empty_input": "Bitte sende eine Textnachricht.",
-        "empty_reply_fallback": "Entschuldige, die Antwort war leer. Bitte versuche es noch einmal.",
-        "technical_fallback": "Entschuldige, es ist ein technischer Fehler aufgetreten. Bitte versuche es noch einmal.",
-        "ui_fallback": "Es gab einen Oberflächenfehler. Bitte versuche es noch einmal.",
-        "onboarding_intro": (
-            "Hallo! Ich bin Anna — eine SMM-Mentorin für den Start und Aufbau eines Blogs.\n\n"
-            "Ich stelle dir jetzt ein paar kurze Fragen, damit ich dir passender antworten kann."
+        "onboarding_hi": "Hi! / Привет! / Hallo!",
+        "onboarding_gender": "Wie soll ich dich ansprechen?",
+        "onboarding_country": "In welchem Land lebst du gerade?",
+        "onboarding_done": (
+            "Fertig ✨\n\n"
+            "Ich bin Anna — SMM-Mentorin für den Start und Aufbau eines Blogs auf Instagram und Telegram.\n\n"
+            "Ich helfe dir, wenn:\n"
+            "— du schon lange starten willst, aber immer wieder feststeckst\n"
+            "— du schon postest, aber nicht verstehst, warum es nicht funktioniert\n"
+            "— du nicht weißt, worüber du schreiben sollst und wie du das ohne Überforderung aufbauen kannst\n\n"
+            "Womit möchtest du anfangen?"
         ),
-        "ask_name": "Wie soll ich dich ansprechen?",
-        "ask_gender": "Welche Anrede passt für dich am besten?",
         "gender_female": "Frau",
         "gender_male": "Mann",
-        "gender_neutral": "Neutral",
-        "gender_skip": "Überspringen",
-        "ask_age": "Wie alt bist du? Du kannst eine Zahl oder einen Bereich wie 25–30 schreiben.",
-        "ask_country": "In welchem Land lebst du aktuell?",
-        "onboarding_done": "Super, jetzt kennen wir uns etwas besser ✨\n\nWähle, womit du anfangen möchtest:",
+        "gender_skip": "Möchte ich nicht angeben",
+        "start_want_blog": "🚀 Ich will einen Blog starten",
+        "start_not_working": "🔍 Ich poste schon, aber es funktioniert nicht",
+        "start_no_idea": "🧭 Ich weiß nicht, worüber ich schreiben soll",
+        "start_focus": "☀️ Ich brauche einen Fokus für heute",
+        "help": (
+            "Ich kann dir helfen bei:\n\n"
+            "— einem Blogstart von null\n"
+            "— der Wahl deines Themas\n"
+            "— einem einfachen 7-Tage-Plan\n"
+            "— der Analyse, warum dein Blog nicht funktioniert\n"
+            "— deinem Fokus für heute"
+        ),
         "main_intro": (
             "Hallo! ✨\n\n"
-            "Ich bin Anna — eine SMM-Mentorin für den Start und Aufbau eines Blogs auf Instagram und Telegram.\n\n"
-            "Wähle, womit du anfangen möchtest:"
+            "Ich bin Anna — SMM-Mentorin für den Start und Aufbau eines Blogs auf Instagram und Telegram.\n\n"
+            "Womit möchtest du anfangen?"
         ),
-        "help": "Ich kann dir beim Blogstart, bei der Themenwahl, bei einem 7-Tage-Plan, bei der Analyse von Problemen oder beim nächsten sinnvollen Schritt helfen.",
         "menu_start_blog": "🚀 Blog von null starten",
         "menu_pick_direction": "🧭 Thema und Richtung finden",
         "menu_plan": "📅 7-Tage-Plan",
@@ -221,25 +338,90 @@ TRANSLATIONS = {
         "menu_free_chat": "💬 Freier Chat",
         "menu_language": "🌐 Sprache ändern",
         "menu_home": "🏠 Start",
+        "prestart_want_blog_text": (
+            "Verstanden.\n\n"
+            "Meist liegt das Problem hier nicht an Faulheit, sondern an Überforderung und einem unklaren Startpunkt."
+        ),
+        "prestart_not_working_text": (
+            "Es sieht so aus, als würdest du schon etwas tun, aber noch keine Ergebnisse sehen."
+        ),
+        "prestart_no_idea_text": (
+            "Das ist ein ganz normaler Punkt.\n\n"
+            "Meist brauchst du nicht die perfekte Wahl, sondern ein funktionierendes Thema für den Start."
+        ),
+        "prestart_focus_text": (
+            "Okay.\n\n"
+            "Dann gehen wir nicht in große Pläne, sondern in einen klaren Schritt für heute."
+        ),
         "start_blog_screen": (
-            "Welche Situation passt gerade am ehesten?\n\n"
+            "Lass uns ruhig mit den Grundlagen anfangen.\n\n"
+            "Welche Situation passt im Moment am ehesten zu dir?\n\n"
             "1. Ich will anfangen, kann aber kein Thema wählen\n"
             "2. Ich habe ein Thema, weiß aber nicht, wie ich den Blog führen soll\n"
             "3. Ich habe Angst, mich zu zeigen und zu posten\n"
             "4. Ich habe schon angefangen, aber ohne System"
         ),
-        "pick_direction_screen": "Schreib 3 kurze Dinge:\n1. Was dich wirklich interessiert\n2. Worin du schon Erfahrung hast\n3. Mit wem du über deinen Blog sprechen willst",
-        "plan_screen": "Schreib:\n— worum es in deinem Blog ungefähr gehen soll\n— wo du starten willst: Instagram, Telegram oder beides\n— wie viel Zeit du täglich realistisch investieren kannst",
-        "analyze_screen": "Schreib in 2–4 Zeilen:\n— worum es in deinem Blog geht\n— was du schon machst\n— was genau nicht funktioniert",
-        "checkin_screen": "Kurzer Check-in ☀️\n1. Ich habe heute nichts gemacht\n2. Ich habe etwas gemacht, aber es fühlt sich nach zu wenig an\n3. Ich stecke fest\n4. Ich will einen klaren Fokus für heute",
-        "free_chat_screen": "Du bist im freien Chat. Schreib einfach natürlich über deinen Blog, Content, die Angst sichtbar zu werden, Instagram, Telegram oder deinen aktuellen Stillstand.",
+        "pick_direction_screen": (
+            "Lass uns eine Richtung finden, die wirklich zu dir passt.\n\n"
+            "Schreib kurz 3 Dinge:\n\n"
+            "1. Was dich wirklich interessiert\n"
+            "2. Worin du schon Erfahrung hast\n"
+            "3. Mit wem du über deinen Blog sprechen möchtest"
+        ),
+        "plan_screen": (
+            "Ich erstelle dir einen einfachen und realistischen 7-Tage-Plan.\n\n"
+            "Schreib davor bitte:\n\n"
+            "— worum es in deinem Blog ungefähr gehen soll\n"
+            "— wo du starten willst: Instagram, Telegram oder beides\n"
+            "— wie viel Zeit du pro Tag realistisch investieren kannst"
+        ),
+        "analyze_screen": (
+            "Okay, lass uns ruhig anschauen, wo gerade der Engpass liegt.\n\n"
+            "Schreib in 2–4 Zeilen:\n\n"
+            "— worum es in deinem Blog geht\n"
+            "— was du bereits machst\n"
+            "— was genau nicht funktioniert"
+        ),
+        "checkin_screen": (
+            "Kurzer Check-in ☀️\n\n"
+            "Was passt heute am ehesten?\n\n"
+            "1. Ich habe heute nichts gemacht\n"
+            "2. Ich habe etwas gemacht, aber es fühlt sich nach zu wenig an\n"
+            "3. Ich stecke fest und weiß nicht, wie es weitergeht\n"
+            "4. Ich möchte einen klaren Fokus für heute"
+        ),
+        "free_chat_screen": (
+            "Du bist jetzt im freien Chat.\n\n"
+            "Du kannst einfach schreiben: über deinen Blog, dein Thema, Content oder deinen Stillstand."
+        ),
         "start_choice_invalid": "Bitte sende nur 1, 2, 3 oder 4.",
-        "start_choice_1": "Antworte kurz: Worüber könntest du lange sprechen und worin hast du schon Erfahrung oder Perspektive?",
-        "start_choice_2": "Schreib: Was ist dein Thema und was ist gerade am schwierigsten — Regelmäßigkeit, Content oder zu verstehen, was funktioniert?",
-        "start_choice_3": "Sag mir kurz: Was macht dir am meisten Angst — Kamera, Meinungen anderer oder Fremdscham?",
-        "start_choice_4": "Schreib: Wo postest du aktuell und was bricht am meisten — Regelmäßigkeit, Ideen, Motivation oder Strategie?",
+        "start_choice_1": (
+            "Das ist ein sehr echter Startpunkt.\n\n"
+            "Beantworte kurz 2 Dinge:\n"
+            "1. Worüber könntest du wirklich lange sprechen?\n"
+            "2. Worin hast du schon Erfahrung?"
+        ),
+        "start_choice_2": (
+            "Das ist schon eine gute Basis.\n\n"
+            "Schreib:\n"
+            "1. Was dein Thema ist\n"
+            "2. Was sich gerade am schwierigsten anfühlt"
+        ),
+        "start_choice_3": (
+            "Du bist damit nicht allein.\n\n"
+            "Sag mir kurz:\n"
+            "1. Was dir am meisten Angst macht\n"
+            "2. Fällt dir Schreiben gerade leichter als Videos aufzunehmen?"
+        ),
+        "start_choice_4": (
+            "Verstanden.\n\n"
+            "Dann liegt das Problem nicht am Anfang, sondern daran, dass alles ohne System läuft.\n\n"
+            "Schreib kurz:\n"
+            "1. Wo du gerade postest\n"
+            "2. Was am meisten bricht"
+        ),
         "openai_language_instruction": "Antworte ausschließlich auf Deutsch.",
-    }
+    },
 }
 
 BASE_SYSTEM_PROMPT = """
@@ -256,26 +438,36 @@ BASE_SYSTEM_PROMPT = """
 - если человек запутался, сужаешь выбор до 2-3 вариантов
 - если контекста не хватает, задаёшь только один короткий уточняющий вопрос
 - после одного уточнения переходишь к полезному ответу
-- не растягивай ответ без необходимости
-- предпочитай 2-3 сильных варианта вместо длинного списка
-- только plain text, без markdown
+- если смысл уже понятен, не уточняешь очевидное, а делаешь разумное предположение и идёшь дальше
+- не делай полотно без необходимости
+
+Формат:
+- только plain text
+- без markdown
+- абзацы короткие
+- списки короткие и полезные
+
+Границы:
+- ты помогаешь по темам: блог, контент, позиционирование, Instagram, Telegram, личный бренд, страх проявления, старт, система, простые планы действий
+
+Цель:
+пользователь должен чувствовать, что с ним говорит умный, спокойный, современный и тёплый SMM-ментор.
 """
 
-def normalize_lang(lang_code):
+def normalize_lang(lang_code: str | None) -> str:
     if not lang_code:
         return "en"
-    base = str(lang_code).split("-")[0].lower()
-    return base if base in SUPPORTED_LANGS else "en"
+    base = lang_code.split("-")[0].lower()
+    if base in SUPPORTED_LANGS:
+        return base
+    return "en"
 
-def tr(lang, key):
+def tr(lang: str, key: str) -> str:
     return TRANSLATIONS[normalize_lang(lang)][key]
 
 def clean_text(text: str) -> str:
-    if text is None:
-        return MENU_PLACEHOLDER
-
     cleaned = (
-        str(text).replace("**", "")
+        text.replace("**", "")
         .replace("*", "")
         .replace("__", "")
         .replace("_", "")
@@ -283,18 +475,14 @@ def clean_text(text: str) -> str:
         .replace("`", "")
         .replace("##", "")
         .replace("#", "")
+        .strip()
     )
-
     while "\n\n\n" in cleaned:
         cleaned = cleaned.replace("\n\n\n", "\n\n")
-
-    cleaned = cleaned.strip()
-
-    return cleaned if cleaned else MENU_PLACEHOLDER
+    return cleaned.strip()
 
 def split_text_into_chunks(text: str, limit: int = TELEGRAM_MESSAGE_LIMIT):
     text = clean_text(text)
-
     if len(text) <= limit:
         return [text]
 
@@ -324,7 +512,7 @@ def split_text_into_chunks(text: str, limit: int = TELEGRAM_MESSAGE_LIMIT):
     if remaining:
         chunks.append(remaining)
 
-    return [chunk for chunk in chunks if chunk and chunk.strip()]
+    return chunks
 
 def normalize_database_url(url: str) -> str:
     if not url:
@@ -336,16 +524,15 @@ def normalize_database_url(url: str) -> str:
 def get_db_connection():
     db_url = normalize_database_url(DATABASE_URL)
     parsed = urlparse(db_url)
+
     sslmode = "require"
     query = parsed.query or ""
     if "sslmode=" in query:
         sslmode = None
 
-    conn = psycopg2.connect(
-        db_url if sslmode is None else f"{db_url}?sslmode={sslmode}",
-        cursor_factory=RealDictCursor
-    )
-    return conn
+    if sslmode is None:
+        return psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+    return psycopg2.connect(f"{db_url}?sslmode={sslmode}", cursor_factory=RealDictCursor)
 
 def init_db():
     conn = get_db_connection()
@@ -358,27 +545,18 @@ def init_db():
         username TEXT,
         first_name TEXT,
         language_code TEXT,
-        selected_language TEXT,
-        display_name TEXT,
         gender TEXT,
-        age_range TEXT,
-        country TEXT,
+        country_raw TEXT,
         onboarding_completed BOOLEAN DEFAULT FALSE,
         created_at TEXT,
         updated_at TEXT
     )
     """)
 
-    cur.execute("""
-    ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS language_code TEXT,
-    ADD COLUMN IF NOT EXISTS selected_language TEXT,
-    ADD COLUMN IF NOT EXISTS display_name TEXT,
-    ADD COLUMN IF NOT EXISTS gender TEXT,
-    ADD COLUMN IF NOT EXISTS age_range TEXT,
-    ADD COLUMN IF NOT EXISTS country TEXT,
-    ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE
-    """)
+    cur.execute("""ALTER TABLE users ADD COLUMN IF NOT EXISTS language_code TEXT""")
+    cur.execute("""ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT""")
+    cur.execute("""ALTER TABLE users ADD COLUMN IF NOT EXISTS country_raw TEXT""")
+    cur.execute("""ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE""")
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS messages (
@@ -405,93 +583,160 @@ def init_db():
     logger.info("Database initialized")
 
 def save_user(update: Update):
-    telegram_user = update.effective_user
-    now = datetime.now(timezone.utc).isoformat()
-    detected_lang = normalize_lang(getattr(telegram_user, "language_code", None))
+    try:
+        telegram_user = update.effective_user
+        now = datetime.now(timezone.utc).isoformat()
+        detected_lang = normalize_lang(getattr(telegram_user, "language_code", None))
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-    cur.execute("""
-    INSERT INTO users (telegram_user_id, username, first_name, language_code, created_at, updated_at)
-    VALUES (%s, %s, %s, %s, %s, %s)
-    ON CONFLICT (telegram_user_id)
-    DO UPDATE SET
-        username = EXCLUDED.username,
-        first_name = EXCLUDED.first_name,
-        language_code = COALESCE(users.language_code, EXCLUDED.language_code),
-        updated_at = EXCLUDED.updated_at
-    """, (
-        telegram_user.id,
-        telegram_user.username,
-        telegram_user.first_name,
-        detected_lang,
-        now,
-        now
-    ))
-    conn.commit()
-    cur.close()
-    conn.close()
+        cur.execute("""
+        INSERT INTO users (
+            telegram_user_id,
+            username,
+            first_name,
+            language_code,
+            created_at,
+            updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT (telegram_user_id)
+        DO UPDATE SET
+            username = EXCLUDED.username,
+            first_name = EXCLUDED.first_name,
+            updated_at = EXCLUDED.updated_at
+        """, (
+            telegram_user.id,
+            telegram_user.username,
+            telegram_user.first_name,
+            detected_lang,
+            now,
+            now
+        ))
 
-def get_user_profile(telegram_user_id: int):
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.exception("save_user failed: %s", e)
+
+def get_user_profile(telegram_user_id: int) -> dict:
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+        SELECT telegram_user_id, language_code, gender, country_raw, onboarding_completed
+        FROM users
+        WHERE telegram_user_id = %s
+        """, (telegram_user_id,))
+
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if row:
+            return dict(row)
+
+    except Exception as e:
+        logger.exception("get_user_profile failed: %s", e)
+
+    return {
+        "telegram_user_id": telegram_user_id,
+        "language_code": "en",
+        "gender": None,
+        "country_raw": None,
+        "onboarding_completed": False,
+    }
+
+def get_user_language(telegram_user_id: int) -> str:
+    profile = get_user_profile(telegram_user_id)
+    return normalize_lang(profile.get("language_code"))
+
+def set_user_language(telegram_user_id: int, lang: str):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
-        SELECT *
-        FROM users
+        UPDATE users
+        SET language_code = %s,
+            updated_at = %s
         WHERE telegram_user_id = %s
-        """, (telegram_user_id,))
-        row = cur.fetchone()
+        """, (
+            normalize_lang(lang),
+            datetime.now(timezone.utc).isoformat(),
+            telegram_user_id
+        ))
+        conn.commit()
         cur.close()
         conn.close()
-        return row or {}
     except Exception as e:
-        logger.exception("get_user_profile failed: %s", e)
-        return {}
+        logger.exception("set_user_language failed: %s", e)
 
-def update_user_profile(telegram_user_id: int, **fields):
-    if not fields:
-        return
+def set_user_gender(telegram_user_id: int, gender: str):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+        UPDATE users
+        SET gender = %s,
+            updated_at = %s
+        WHERE telegram_user_id = %s
+        """, (
+            gender,
+            datetime.now(timezone.utc).isoformat(),
+            telegram_user_id
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.exception("set_user_gender failed: %s", e)
 
-    allowed = {
-        "selected_language",
-        "display_name",
-        "gender",
-        "age_range",
-        "country",
-        "onboarding_completed",
-        "updated_at"
-    }
+def set_user_country(telegram_user_id: int, country_raw: str):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+        UPDATE users
+        SET country_raw = %s,
+            updated_at = %s
+        WHERE telegram_user_id = %s
+        """, (
+            country_raw.strip(),
+            datetime.now(timezone.utc).isoformat(),
+            telegram_user_id
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.exception("set_user_country failed: %s", e)
 
-    updates = []
-    values = []
+def set_onboarding_completed(telegram_user_id: int, completed: bool = True):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+        UPDATE users
+        SET onboarding_completed = %s,
+            updated_at = %s
+        WHERE telegram_user_id = %s
+        """, (
+            completed,
+            datetime.now(timezone.utc).isoformat(),
+            telegram_user_id
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.exception("set_onboarding_completed failed: %s", e)
 
-    for key, value in fields.items():
-        if key in allowed:
-            updates.append(f"{key} = %s")
-            values.append(value)
-
-    if not updates:
-        return
-
-    values.append(telegram_user_id)
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        f"UPDATE users SET {', '.join(updates)} WHERE telegram_user_id = %s",
-        values
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-def get_user_language(telegram_user_id: int) -> str:
+def is_onboarding_completed(telegram_user_id: int) -> bool:
     profile = get_user_profile(telegram_user_id)
-    selected = profile.get("selected_language")
-    fallback = profile.get("language_code")
-    return normalize_lang(selected or fallback or "en")
+    return bool(profile.get("onboarding_completed"))
 
 def save_message(telegram_user_id: int, role: str, text: str):
     try:
@@ -571,75 +816,26 @@ def update_user_memory(telegram_user_id: int, summary: str):
     except Exception as e:
         logger.exception("update_user_memory failed: %s", e)
 
-def get_profile_context_text(profile: dict, lang: str) -> str:
-    name = profile.get("display_name") or profile.get("first_name") or ""
-    gender = profile.get("gender") or ""
-    age_range = profile.get("age_range") or ""
-    country = profile.get("country") or ""
+def build_system_prompt(lang: str) -> str:
+    return BASE_SYSTEM_PROMPT + "\n\n" + tr(lang, "openai_language_instruction")
 
-    return (
-        f"Имя пользователя: {name or 'не указано'}\n"
-        f"Пол / способ обращения: {gender or 'не указан'}\n"
-        f"Возраст: {age_range or 'не указан'}\n"
-        f"Страна проживания: {country or 'не указана'}\n"
-        f"Выбранный язык: {lang}"
-    )
-
-def build_system_prompt(lang: str, profile: dict | None = None) -> str:
-    lang = normalize_lang(lang)
-    extra = tr(lang, "openai_language_instruction")
-
-    profile_text = ""
-    if profile:
-        gender = profile.get("gender")
-        if lang == "ru":
-            if gender == "female":
-                profile_text = (
-                    "Обращайся к пользователю мягко и естественно. "
-                    "Если формулировка зависит от рода, используй женскую форму."
-                )
-            elif gender == "male":
-                profile_text = (
-                    "Обращайся к пользователю мягко и естественно. "
-                    "Если формулировка зависит от рода, используй мужскую форму."
-                )
-            else:
-                profile_text = (
-                    "Если формулировка зависит от рода, по возможности строй фразы нейтрально."
-                )
-
-    return BASE_SYSTEM_PROMPT + "\n\n" + extra + "\n" + profile_text
-
-def call_openai(prompt: str, lang: str, profile: dict | None = None, instructions: str | None = None) -> str:
+def call_openai(prompt: str, lang: str, instructions: str | None = None) -> str:
     try:
-        final_instructions = instructions or build_system_prompt(lang, profile)
+        final_instructions = instructions or build_system_prompt(lang)
         response = client.responses.create(
             model="gpt-5.2",
             instructions=final_instructions,
             input=prompt
         )
-
-        output_text = getattr(response, "output_text", None)
-        cleaned = clean_text(output_text)
-
-        if not cleaned or cleaned == MENU_PLACEHOLDER:
-            logger.warning("OpenAI returned empty output_text. prompt=%r", prompt[:500])
-            fallback = {
-                "ru": "Извини, у меня сейчас не получилось сформулировать ответ. Напиши ещё раз одним сообщением.",
-                "en": "Sorry, I couldn't generate a proper reply just now. Please send your message again.",
-                "de": "Entschuldige, ich konnte gerade keine passende Antwort erzeugen. Schreib bitte noch einmal."
-            }
-            return fallback.get(normalize_lang(lang), fallback["en"])
-
-        return cleaned
+        return clean_text(response.output_text)
     except Exception as e:
         logger.exception("OpenAI request failed: %s", e)
         fallback = {
             "ru": "Сейчас я не могу нормально ответить из-за технической ошибки.\n\nПопробуй ещё раз чуть позже.",
             "en": "I can’t answer properly right now because of a technical error.\n\nPlease try again a bit later.",
-            "de": "Ich can im Moment wegen eines technischen Fehlers nicht richtig antworten.\n\nBitte versuche es etwas später noch einmal."
+            "de": "Ich kann im Moment wegen eines technischen Fehlers nicht richtig antworten.\n\nBitte versuche es etwas später noch einmal."
         }
-        return fallback.get(normalize_lang(lang), fallback["en"])
+        return fallback[normalize_lang(lang)]
 
 def maybe_update_memory(telegram_user_id: int, user_text: str, bot_text: str):
     if len(user_text.strip()) < 25:
@@ -656,13 +852,10 @@ def maybe_update_memory(telegram_user_id: int, user_text: str, bot_text: str):
 
 Правила:
 - сохрани только устойчивые и полезные факты
-- не пересказывай весь диалог
 - максимум 3 короткие строки
-- включай только то, что поможет в будущих ответах:
-  цель блога, тема, формат, страхи, платформа, стадия, барьеры
+- включай только то, что поможет в будущих ответах
 - если новых устойчивых фактов нет, верни предыдущую summary почти без изменений
 - только plain text
-- без markdown
 
 Текущая summary:
 {current_memory if current_memory else "Пока памяти нет."}
@@ -676,41 +869,10 @@ Bot: {bot_text}
         lang=lang,
         instructions="Ты помогаешь сжато обновлять память о пользователе. Верни summary на языке пользователя."
     )
-    if summary and summary != MENU_PLACEHOLDER:
+    if summary:
         update_user_memory(telegram_user_id, summary)
 
-def build_context_prompt(telegram_user_id: int, user_text: str):
-    profile = get_user_profile(telegram_user_id)
-    lang = get_user_language(telegram_user_id)
-    memory = get_user_memory(telegram_user_id)
-    recent_messages = get_recent_messages(telegram_user_id, limit=4)
-
-    history_block = ""
-    for row in recent_messages:
-        history_block += f"{row['role']}: {row['text']}\n"
-
-    prompt = f"""
-Ниже контекст пользователя для ответа.
-
-Профиль пользователя:
-{get_profile_context_text(profile, lang)}
-
-Память о пользователе:
-{memory if memory else "Пока нет сохранённой памяти."}
-
-Недавние сообщения:
-{history_block if history_block else "Нет истории."}
-
-Новое сообщение пользователя:
-{user_text}
-
-Ответь как Anna — тёплый SMM-ментор по правилам системы.
-"""
-    return prompt
-
 def get_user_context_block(telegram_user_id: int, user_text: str):
-    profile = get_user_profile(telegram_user_id)
-    lang = get_user_language(telegram_user_id)
     memory = get_user_memory(telegram_user_id)
     recent_messages = get_recent_messages(telegram_user_id, limit=4)
 
@@ -719,9 +881,6 @@ def get_user_context_block(telegram_user_id: int, user_text: str):
         history_block += f"{row['role']}: {row['text']}\n"
 
     return f"""
-Профиль пользователя:
-{get_profile_context_text(profile, lang)}
-
 Память о пользователе:
 {memory if memory else "Пока нет сохранённой памяти."}
 
@@ -732,32 +891,22 @@ def get_user_context_block(telegram_user_id: int, user_text: str):
 {user_text}
 """
 
+def build_context_prompt(telegram_user_id: int, user_text: str):
+    return f"""
+Ниже контекст пользователя для ответа.
+
+{get_user_context_block(telegram_user_id, user_text)}
+
+Ответь как Anna — тёплый SMM-ментор по правилам системы.
+"""
+
 def classify_request(user_text: str) -> str:
     text = user_text.lower()
 
-    topic_keywords = [
-        "о чем вести", "о чём вести", "тема блога", "направление", "ниша",
-        "какую тему", "выбрать тему", "определить тему",
-        "what should i blog about", "blog topic", "choose topic",
-        "worüber bloggen", "thema wählen"
-    ]
-    content_keywords = [
-        "идеи", "контент", "рубрики", "что снимать", "что писать",
-        "сценарии", "рилс", "reels", "сторис", "посты", "контент-план",
-        "content ideas", "content plan", "hooks",
-        "content ideen", "contentplan"
-    ]
-    plan_keywords = [
-        "план на 7 дней", "7 дней", "на неделю",
-        "7 day plan", "weekly plan",
-        "7-tage-plan", "wochenplan"
-    ]
-    diagnose_keywords = [
-        "не работает", "нет охватов", "не идет", "не идёт", "мало просмотров",
-        "нет отклика", "нет продаж", "не растет", "не растёт",
-        "not working", "low reach", "no engagement",
-        "funktioniert nicht", "keine reichweite"
-    ]
+    topic_keywords = ["о чем вести", "о чём вести", "тема блога", "direction", "blog topic", "thema"]
+    content_keywords = ["идеи", "контент", "что писать", "content ideas", "content", "hooks"]
+    plan_keywords = ["план на 7 дней", "7 day plan", "7-tage-plan", "на неделю"]
+    diagnose_keywords = ["не работает", "нет охватов", "not working", "keine reichweite"]
 
     if any(keyword in text for keyword in plan_keywords):
         return "plan_7_days"
@@ -772,76 +921,63 @@ def classify_request(user_text: str) -> str:
 
 def generate_blog_direction_response(telegram_user_id: int, user_text: str) -> str:
     lang = get_user_language(telegram_user_id)
-    profile = get_user_profile(telegram_user_id)
-    context_block = get_user_context_block(telegram_user_id, user_text)
-
     prompt = f"""
-{context_block}
+{get_user_context_block(telegram_user_id, user_text)}
 
 Задача:
 помоги пользователю понять, о чём ему вести блог.
 
-Требования:
-- предложи 2-3 сильных направления максимум
-- добавляй конкретику
-- помоги сузить выбор
-- не растягивай ответ
+Дай 2-3 сильных направления максимум.
+Объясни, почему именно это ему подходит.
+В конце скажи, что бы ты выбрала на его месте.
 """
-    return call_openai(prompt, lang=lang, profile=profile)
+    return call_openai(prompt, lang=lang)
 
 def generate_content_ideas_response(telegram_user_id: int, user_text: str) -> str:
     lang = get_user_language(telegram_user_id)
-    profile = get_user_profile(telegram_user_id)
-    context_block = get_user_context_block(telegram_user_id, user_text)
-
     prompt = f"""
-{context_block}
+{get_user_context_block(telegram_user_id, user_text)}
 
 Задача:
 дать пользователю качественные идеи контента.
 
-Требования:
-- предложи 5 сильных идей максимум
-- для каждой идеи укажи идею, угол подачи, пример хука и лучший формат
-- не растягивай ответ
+Предложи 5 сильных идей максимум.
+Для каждой идеи укажи:
+1. саму идею
+2. сильный угол подачи
+3. пример хука
+4. лучший формат
 """
-    return call_openai(prompt, lang=lang, profile=profile)
+    return call_openai(prompt, lang=lang)
 
 def generate_7_day_plan_response(telegram_user_id: int, user_text: str) -> str:
     lang = get_user_language(telegram_user_id)
-    profile = get_user_profile(telegram_user_id)
-    context_block = get_user_context_block(telegram_user_id, user_text)
-
     prompt = f"""
-{context_block}
+{get_user_context_block(telegram_user_id, user_text)}
 
 Задача:
-сделать реалистичный и сильный план на 7 дней.
+сделать реалистичный план на 7 дней.
 
-Требования:
-- каждый день = один основной фокус
-- для каждого дня укажи: фокус, действие, результат
-- не перегружай
+Каждый день = один основной фокус.
+Для каждого дня укажи:
+1. фокус дня
+2. что конкретно сделать
+3. результат к концу дня
 """
-    return call_openai(prompt, lang=lang, profile=profile)
+    return call_openai(prompt, lang=lang)
 
 def generate_blog_diagnosis_response(telegram_user_id: int, user_text: str) -> str:
     lang = get_user_language(telegram_user_id)
-    profile = get_user_profile(telegram_user_id)
-    context_block = get_user_context_block(telegram_user_id, user_text)
-
     prompt = f"""
-{context_block}
+{get_user_context_block(telegram_user_id, user_text)}
 
 Задача:
-помочь пользователю понять, почему блог или контент не работает.
+помочь пользователю понять, почему его блог или контент не работает.
 
-Требования:
-- выдели 1 главную и максимум 1 дополнительную проблему
-- объясни просто
-- потом дай один следующий шаг
+Выдели 1 главную проблему и максимум 1 дополнительную.
+Потом дай один понятный следующий шаг.
 """
-    return call_openai(prompt, lang=lang, profile=profile)
+    return call_openai(prompt, lang=lang)
 
 def generate_general_response(telegram_user_id: int, user_text: str) -> str:
     request_type = classify_request(user_text)
@@ -856,24 +992,32 @@ def generate_general_response(telegram_user_id: int, user_text: str) -> str:
         return generate_blog_diagnosis_response(telegram_user_id, user_text)
 
     lang = get_user_language(telegram_user_id)
-    profile = get_user_profile(telegram_user_id)
-    final_prompt = build_context_prompt(telegram_user_id, user_text)
-    return call_openai(final_prompt, lang=lang, profile=profile)
+    return call_openai(build_context_prompt(telegram_user_id, user_text), lang=lang)
 
 def get_language_keyboard():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("Русский", callback_data="lang_ru")],
-        [InlineKeyboardButton("English", callback_data="lang_en")],
-        [InlineKeyboardButton("Deutsch", callback_data="lang_de")],
-    ])
+    keyboard = [[
+        InlineKeyboardButton("Русский", callback_data="lang_ru"),
+        InlineKeyboardButton("English", callback_data="lang_en"),
+        InlineKeyboardButton("Deutsch", callback_data="lang_de"),
+    ]]
+    return InlineKeyboardMarkup(keyboard)
 
 def get_gender_keyboard(lang: str):
-    return InlineKeyboardMarkup([
+    keyboard = [
         [InlineKeyboardButton(tr(lang, "gender_female"), callback_data="gender_female")],
         [InlineKeyboardButton(tr(lang, "gender_male"), callback_data="gender_male")],
-        [InlineKeyboardButton(tr(lang, "gender_neutral"), callback_data="gender_neutral")],
         [InlineKeyboardButton(tr(lang, "gender_skip"), callback_data="gender_skip")],
-    ])
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_onboarding_start_menu(lang: str):
+    keyboard = [
+        [InlineKeyboardButton(tr(lang, "start_want_blog"), callback_data="prestart_want_blog")],
+        [InlineKeyboardButton(tr(lang, "start_not_working"), callback_data="prestart_not_working")],
+        [InlineKeyboardButton(tr(lang, "start_no_idea"), callback_data="prestart_no_idea")],
+        [InlineKeyboardButton(tr(lang, "start_focus"), callback_data="prestart_focus")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 def get_main_menu(lang: str):
     keyboard = [
@@ -892,130 +1036,76 @@ def get_home_menu(lang: str):
         [InlineKeyboardButton(tr(lang, "menu_home"), callback_data="main_menu")]
     ])
 
-async def safe_reply(message_obj, chunk, current_markup=None):
-    logger.info("safe_reply chunk repr: %r", chunk)
-
-    text = clean_text(chunk)
-
-    if not text or text == MENU_PLACEHOLDER:
-        logger.warning("Empty reply detected, sending fallback text")
-        text = "Извини, ответ получился пустым. Попробуй ещё раз."
-
-    chunks = split_text_into_chunks(text)
-
+async def safe_reply(message_obj, text, reply_markup=None):
     try:
-        if len(chunks) == 1:
-            await message_obj.reply_text(chunks[0], reply_markup=current_markup)
-            return
-
-        for part in chunks[:-1]:
-            await message_obj.reply_text(part)
-
-        await message_obj.reply_text(chunks[-1], reply_markup=current_markup)
-
-    except BadRequest as e:
+        chunks = split_text_into_chunks(text)
+        for i, chunk in enumerate(chunks):
+            current_markup = reply_markup if i == len(chunks) - 1 else None
+            await message_obj.reply_text(chunk, reply_markup=current_markup)
+    except TelegramError as e:
         logger.exception("reply_text failed: %s", e)
-        fallback = "Извини, произошла техническая ошибка. Попробуй ещё раз."
-        await message_obj.reply_text(fallback)
 
 async def safe_edit(query, text, reply_markup=None):
     try:
-        cleaned = clean_text(text)
+        text = clean_text(text)
 
-        if not cleaned or cleaned == MENU_PLACEHOLDER:
-            cleaned = "Выбери действие:"
-
-        chunks = split_text_into_chunks(cleaned)
-
-        if len(chunks) == 1:
-            await query.edit_message_text(text=chunks[0], reply_markup=reply_markup)
+        if len(text) <= TELEGRAM_MESSAGE_LIMIT:
+            await query.edit_message_text(text=text, reply_markup=reply_markup)
             return
 
-        await query.edit_message_text(text=chunks[0])
+        chunks = split_text_into_chunks(text)
+        await query.edit_message_text(text=chunks)
 
-        for part in chunks[1:-1]:
-            await query.message.reply_text(part)
+        message = query.message
+        for chunk in chunks[1:-1]:
+            await message.reply_text(chunk)
 
-        await query.message.reply_text(chunks[-1], reply_markup=reply_markup)
+        if len(chunks) > 1:
+            await message.reply_text(chunks[-1], reply_markup=reply_markup)
 
     except BadRequest as e:
         if "Message is not modified" in str(e):
             logger.info("Skipped edit: message is not modified")
         else:
             logger.exception("BadRequest on edit_message_text: %s", e)
-            try:
-                fallback = "Произошла ошибка интерфейса. Попробуй ещё раз."
-                await query.message.reply_text(fallback, reply_markup=reply_markup)
-            except Exception:
-                logger.exception("Fallback after safe_edit failed")
     except TelegramError as e:
         logger.exception("edit_message_text failed: %s", e)
-        try:
-            fallback = "Произошла ошибка интерфейса. Попробуй ещё раз."
-            await query.message.reply_text(fallback, reply_markup=reply_markup)
-        except Exception:
-            logger.exception("Fallback after TelegramError in safe_edit failed")
 
-async def send_main_menu_message(target, lang: str):
-    await safe_reply(target, tr(lang, "main_intro"), current_markup=get_main_menu(lang))
+async def send_language_picker(message_obj):
+    await safe_reply(message_obj, "Hi! / Привет! / Hallo!", reply_markup=get_language_keyboard())
 
-async def start_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    save_user(update)
-    context.user_data.clear()
-    context.user_data["mode"] = "onboarding"
-    context.user_data["onboarding_step"] = "language"
-    lang = normalize_lang(getattr(update.effective_user, "language_code", "ru"))
+async def send_gender_picker(query, lang: str):
+    await safe_edit(query, tr(lang, "onboarding_gender"), reply_markup=get_gender_keyboard(lang))
+
+async def send_country_request(query, lang: str):
+    await safe_edit(query, tr(lang, "onboarding_country"))
+
+async def send_post_onboarding_welcome(message_obj, lang: str):
     await safe_reply(
-        update.message,
-        tr(lang, "language_picker"),
-        current_markup=get_language_keyboard()
+        message_obj,
+        tr(lang, "onboarding_done"),
+        reply_markup=get_onboarding_start_menu(lang)
     )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
     user_id = update.effective_user.id
-    profile = get_user_profile(user_id)
 
-    if not profile or not profile.get("onboarding_completed"):
-        await start_onboarding(update, context)
+    if is_onboarding_completed(user_id):
+        lang = get_user_language(user_id)
+        context.user_data.clear()
+        await safe_reply(update.message, tr(lang, "main_intro"), reply_markup=get_main_menu(lang))
         return
 
     context.user_data.clear()
-    lang = get_user_language(user_id)
-    await send_main_menu_message(update.message, lang)
+    context.user_data["awaiting_language_selection"] = True
+    await send_language_picker(update.message)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
-    await safe_reply(update.message, tr(lang, "help"), current_markup=get_main_menu(lang))
-
-async def resetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        UPDATE users
-        SET onboarding_completed = FALSE,
-            selected_language = NULL,
-            display_name = NULL,
-            gender = NULL,
-            age_range = NULL,
-            country = NULL,
-            updated_at = %s
-        WHERE telegram_user_id = %s
-        """,
-        (datetime.now(timezone.utc).isoformat(), user_id),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    context.user_data.clear()
-    await update.message.reply_text("Reset done. Send /start")
-
+    await safe_reply(update.message, tr(lang, "help"), reply_markup=get_main_menu(lang))
 
 async def show_main_menu(query, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
@@ -1034,24 +1124,28 @@ async def show_pick_direction_screen(query, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     lang = get_user_language(user_id)
     context.user_data["mode"] = "pick_direction"
+    context.user_data["step"] = "awaiting_pick_direction_answer"
     await safe_edit(query, tr(lang, "pick_direction_screen"), reply_markup=get_home_menu(lang))
 
 async def show_plan_7_days_screen(query, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     lang = get_user_language(user_id)
     context.user_data["mode"] = "plan_7_days"
+    context.user_data["step"] = "awaiting_plan_7_days_answer"
     await safe_edit(query, tr(lang, "plan_screen"), reply_markup=get_home_menu(lang))
 
 async def show_analyze_blog_screen(query, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     lang = get_user_language(user_id)
     context.user_data["mode"] = "analyze_blog"
+    context.user_data["step"] = "awaiting_analyze_blog_answer"
     await safe_edit(query, tr(lang, "analyze_screen"), reply_markup=get_home_menu(lang))
 
 async def show_daily_checkin_screen(query, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     lang = get_user_language(user_id)
     context.user_data["mode"] = "daily_checkin"
+    context.user_data["step"] = "awaiting_daily_checkin_answer"
     await safe_edit(query, tr(lang, "checkin_screen"), reply_markup=get_home_menu(lang))
 
 async def show_free_chat_screen(query, context: ContextTypes.DEFAULT_TYPE):
@@ -1060,44 +1154,57 @@ async def show_free_chat_screen(query, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await safe_edit(query, tr(lang, "free_chat_screen"), reply_markup=get_home_menu(lang))
 
-async def show_change_language_screen(query, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["mode"] = "onboarding"
-    context.user_data["onboarding_step"] = "language"
-    lang = normalize_lang(getattr(query.from_user, "language_code", "ru"))
-    await safe_edit(query, tr(lang, "language_picker"), reply_markup=get_language_keyboard())
-
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    try:
+        await query.answer()
+    except TelegramError as e:
+        logger.exception("callback answer failed: %s", e)
+
     user_id = query.from_user.id
 
     if query.data.startswith("lang_"):
         selected_lang = normalize_lang(query.data.replace("lang_", ""))
-        update_user_profile(
-            user_id,
-            selected_language=selected_lang,
-            updated_at=datetime.now(timezone.utc).isoformat()
-        )
-        context.user_data["mode"] = "onboarding"
-        context.user_data["onboarding_step"] = "name"
-        await safe_edit(query, tr(selected_lang, "onboarding_intro"))
-        await query.message.reply_text(tr(selected_lang, "ask_name"))
+        save_user(update)
+        set_user_language(user_id, selected_lang)
+        context.user_data.clear()
+        context.user_data["awaiting_gender_selection"] = True
+        await send_gender_picker(query, selected_lang)
         return
 
     if query.data.startswith("gender_"):
         lang = get_user_language(user_id)
-        gender_value = query.data.replace("gender_", "")
-        if gender_value == "skip":
-            gender_value = "unspecified"
 
-        update_user_profile(
-            user_id,
-            gender=gender_value,
-            updated_at=datetime.now(timezone.utc).isoformat()
-        )
-        context.user_data["mode"] = "onboarding"
-        context.user_data["onboarding_step"] = "age"
-        await safe_edit(query, tr(lang, "ask_age"))
+        if query.data == "gender_female":
+            set_user_gender(user_id, "female")
+        elif query.data == "gender_male":
+            set_user_gender(user_id, "male")
+        else:
+            set_user_gender(user_id, "unspecified")
+
+        context.user_data.clear()
+        context.user_data["awaiting_country_input"] = True
+        await send_country_request(query, lang)
+        return
+
+    if query.data == "prestart_want_blog":
+        lang = get_user_language(user_id)
+        await safe_edit(query, tr(lang, "prestart_want_blog_text"), reply_markup=get_main_menu(lang))
+        return
+
+    if query.data == "prestart_not_working":
+        lang = get_user_language(user_id)
+        await safe_edit(query, tr(lang, "prestart_not_working_text"), reply_markup=get_main_menu(lang))
+        return
+
+    if query.data == "prestart_no_idea":
+        lang = get_user_language(user_id)
+        await safe_edit(query, tr(lang, "prestart_no_idea_text"), reply_markup=get_main_menu(lang))
+        return
+
+    if query.data == "prestart_focus":
+        lang = get_user_language(user_id)
+        await safe_edit(query, tr(lang, "prestart_focus_text"), reply_markup=get_main_menu(lang))
         return
 
     if query.data == "start_blog":
@@ -1113,59 +1220,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "free_chat":
         await show_free_chat_screen(query, context)
     elif query.data == "change_language":
-        await show_change_language_screen(query, context)
+        context.user_data.clear()
+        context.user_data["awaiting_language_selection"] = True
+        await safe_edit(query, "Hi! / Привет! / Hallo!", reply_markup=get_language_keyboard())
     elif query.data == "main_menu":
         await show_main_menu(query, context)
-
-async def finish_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
-    lang = get_user_language(user_id)
-    update_user_profile(
-        user_id,
-        onboarding_completed=True,
-        updated_at=datetime.now(timezone.utc).isoformat()
-    )
-    context.user_data.clear()
-    await safe_reply(
-        update.message,
-        tr(lang, "onboarding_done"),
-        current_markup=get_main_menu(lang)
-    )
-
-async def handle_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
-    user_id = update.effective_user.id
-    lang = get_user_language(user_id)
-    step = context.user_data.get("onboarding_step")
-
-    if step == "name":
-        update_user_profile(
-            user_id,
-            display_name=user_text.strip(),
-            updated_at=datetime.now(timezone.utc).isoformat()
-        )
-        context.user_data["onboarding_step"] = "gender"
-        await safe_reply(update.message, tr(lang, "ask_gender"), current_markup=get_gender_keyboard(lang))
-        return
-
-    if step == "age":
-        update_user_profile(
-            user_id,
-            age_range=user_text.strip(),
-            updated_at=datetime.now(timezone.utc).isoformat()
-        )
-        context.user_data["onboarding_step"] = "country"
-        await safe_reply(update.message, tr(lang, "ask_country"))
-        return
-
-    if step == "country":
-        update_user_profile(
-            user_id,
-            country=user_text.strip(),
-            updated_at=datetime.now(timezone.utc).isoformat()
-        )
-        await finish_onboarding(update, context, user_id)
-        return
-
-    await safe_reply(update.message, tr(lang, "language_picker"), current_markup=get_language_keyboard())
 
 async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     step = context.user_data.get("step")
@@ -1177,133 +1236,120 @@ async def handle_start_blog_flow(update: Update, context: ContextTypes.DEFAULT_T
 
         if choice == "1":
             context.user_data["step"] = "awaiting_answer_for_choice_1"
-            await safe_reply(update.message, tr(lang, "start_choice_1"), current_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_1"), reply_markup=get_home_menu(lang))
             return
-        elif choice == "2":
+        if choice == "2":
             context.user_data["step"] = "awaiting_answer_for_choice_2"
-            await safe_reply(update.message, tr(lang, "start_choice_2"), current_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_2"), reply_markup=get_home_menu(lang))
             return
-        elif choice == "3":
+        if choice == "3":
             context.user_data["step"] = "awaiting_answer_for_choice_3"
-            await safe_reply(update.message, tr(lang, "start_choice_3"), current_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_3"), reply_markup=get_home_menu(lang))
             return
-        elif choice == "4":
+        if choice == "4":
             context.user_data["step"] = "awaiting_answer_for_choice_4"
-            await safe_reply(update.message, tr(lang, "start_choice_4"), current_markup=get_home_menu(lang))
-            return
-        else:
-            await safe_reply(update.message, tr(lang, "start_choice_invalid"), current_markup=get_home_menu(lang))
+            await safe_reply(update.message, tr(lang, "start_choice_4"), reply_markup=get_home_menu(lang))
             return
 
+        await safe_reply(update.message, tr(lang, "start_choice_invalid"), reply_markup=get_home_menu(lang))
+        return
+
     answer = generate_general_response(user_id, user_text)
-    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
-    if len(user_text) > 40:
-        maybe_update_memory(user_id, user_text, answer)
+    maybe_update_memory(user_id, user_text, answer)
     context.user_data.clear()
 
 async def handle_pick_direction_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
     answer = generate_blog_direction_response(user_id, user_text)
-    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
-    if len(user_text) > 40:
-        maybe_update_memory(user_id, user_text, answer)
+    maybe_update_memory(user_id, user_text, answer)
     context.user_data.clear()
 
 async def handle_plan_7_days_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
     answer = generate_7_day_plan_response(user_id, user_text)
-    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
-    if len(user_text) > 40:
-        maybe_update_memory(user_id, user_text, answer)
+    maybe_update_memory(user_id, user_text, answer)
     context.user_data.clear()
 
 async def handle_analyze_blog_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
     answer = generate_blog_diagnosis_response(user_id, user_text)
-    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
-    if len(user_text) > 40:
-        maybe_update_memory(user_id, user_text, answer)
+    maybe_update_memory(user_id, user_text, answer)
     context.user_data.clear()
 
 async def handle_daily_checkin_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
-    profile = get_user_profile(user_id)
 
     prompt = f"""
 {get_user_context_block(user_id, user_text)}
 
 Задача:
-помочь пользователю сделать мягкий и полезный daily check-in.
+пользователь прислал ежедневный check-in.
 
-Требования:
-- будь поддерживающей
-- помоги увидеть главное
-- дай один понятный следующий шаг
-- не перегружай
+Дай ответ так, чтобы:
+- сначала было ощущение поддержки
+- потом появилась ясность
+- потом один фокус на сегодня
+- отвечай компактно
 """
-    answer = call_openai(prompt, lang=lang, profile=profile)
-    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
+    answer = call_openai(prompt, lang=lang)
+    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
-    if len(user_text) > 40:
-        maybe_update_memory(user_id, user_text, answer)
+    maybe_update_memory(user_id, user_text, answer)
     context.user_data.clear()
 
 async def handle_free_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text: str):
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
     answer = generate_general_response(user_id, user_text)
-    await safe_reply(update.message, answer, current_markup=get_home_menu(lang))
+    await safe_reply(update.message, answer, reply_markup=get_home_menu(lang))
     save_message(user_id, "user", user_text)
     save_message(user_id, "assistant", answer)
-    if len(user_text) > 40:
-        maybe_update_memory(user_id, user_text, answer)
+    maybe_update_memory(user_id, user_text, answer)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(update)
     user_id = update.effective_user.id
-
-    if not update.message or update.message.text is None:
-        logger.warning("handle_message got update without text from user_id=%s", user_id)
-        return
-
     user_text = update.message.text.strip()
-    logger.info("Incoming message from user_id=%s text=%r", user_id, user_text)
+    mode = context.user_data.get("mode")
 
-    if not user_text:
+    if context.user_data.get("awaiting_country_input"):
         lang = get_user_language(user_id)
-        await safe_reply(update.message, tr(lang, "empty_input"))
+        set_user_country(user_id, user_text)
+        set_onboarding_completed(user_id, True)
+        context.user_data.clear()
+        await send_post_onboarding_welcome(update.message, lang)
         return
 
-    mode = context.user_data.get("mode")
-    profile = get_user_profile(user_id)
+    if context.user_data.get("awaiting_language_selection"):
+        await send_language_picker(update.message)
+        return
 
-    if not profile or not profile.get("onboarding_completed"):
-        if not mode:
-            context.user_data["mode"] = "onboarding"
-            context.user_data["onboarding_step"] = "language"
-            lang = normalize_lang(getattr(update.effective_user, "language_code", "ru"))
-            await safe_reply(
-                update.message,
-                tr(lang, "language_picker"),
-                current_markup=get_language_keyboard()
-            )
-            return
+    if context.user_data.get("awaiting_gender_selection"):
+        lang = get_user_language(user_id)
+        await safe_reply(update.message, tr(lang, "onboarding_gender"), reply_markup=get_gender_keyboard(lang))
+        return
 
-    if mode == "onboarding":
-        await handle_onboarding(update, context, user_text)
+    if not is_onboarding_completed(user_id):
+        context.user_data.clear()
+        context.user_data["awaiting_language_selection"] = True
+        await send_language_picker(update.message)
         return
 
     if mode == "start_blog":
@@ -1329,7 +1375,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await handle_free_chat(update, context, user_text)
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.exception("Exception while handling update", exc_info=context.error)
+    logger.exception("Exception while handling update:", exc_info=context.error)
 
 def main():
     if not DATABASE_URL:
@@ -1348,7 +1394,6 @@ def main():
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("resetme", resetme))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_error_handler(error_handler)
