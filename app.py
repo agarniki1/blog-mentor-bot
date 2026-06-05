@@ -990,6 +990,33 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_user_language(user_id)
     await safe_reply(update.message, tr(lang, "help"), current_markup=get_main_menu(lang))
 
+async def resetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE users
+        SET onboarding_completed = FALSE,
+            selected_language = NULL,
+            display_name = NULL,
+            gender = NULL,
+            age_range = NULL,
+            country = NULL,
+            updated_at = %s
+        WHERE telegram_user_id = %s
+        """,
+        (datetime.now(timezone.utc).isoformat(), user_id),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    context.user_data.clear()
+    await update.message.reply_text("Reset done. Send /start")
+
+
 async def show_main_menu(query, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     lang = get_user_language(user_id)
@@ -1323,11 +1350,11 @@ def main():
         .build()
     )
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_error_handler(error_handler)
+   app.add_handler(CommandHandler("start", start))
+   app.add_handler(CommandHandler("help", help_command))
+   app.add_handler(CommandHandler("resetme", resetme))
+  app.add_handler(CallbackQueryHandler(button_handler))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Bot is running...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
