@@ -893,26 +893,19 @@ def get_home_menu(lang: str):
     ])
 
 async def safe_reply(message_obj, chunk, current_markup=None):
-    user_lang = "ru"
-    try:
-        if getattr(message_obj, "chat", None):
-            user_lang = normalize_lang(getattr(message_obj.from_user, "language_code", "ru"))
-    except Exception:
-        pass
-
     logger.info("safe_reply chunk repr: %r", chunk)
 
     text = clean_text(chunk)
 
     if not text or text == MENU_PLACEHOLDER:
         logger.warning("Empty reply detected, sending fallback text")
-        text = tr(user_lang, "empty_reply_fallback")
+        text = "Извини, ответ получился пустым. Попробуй ещё раз."
 
     chunks = split_text_into_chunks(text)
 
     try:
         if len(chunks) == 1:
-            await message_obj.reply_text(chunks, reply_markup=current_markup)
+            await message_obj.reply_text(chunks[0], reply_markup=current_markup)
             return
 
         for part in chunks[:-1]:
@@ -922,24 +915,23 @@ async def safe_reply(message_obj, chunk, current_markup=None):
 
     except BadRequest as e:
         logger.exception("reply_text failed: %s", e)
-        fallback = tr(user_lang, "technical_fallback")
+        fallback = "Извини, произошла техническая ошибка. Попробуй ещё раз."
         await message_obj.reply_text(fallback)
 
 async def safe_edit(query, text, reply_markup=None):
     try:
-        query_lang = normalize_lang(getattr(query.from_user, "language_code", "ru"))
         cleaned = clean_text(text)
 
         if not cleaned or cleaned == MENU_PLACEHOLDER:
-            cleaned = tr(query_lang, "language_picker")
+            cleaned = "Выбери действие:"
 
         chunks = split_text_into_chunks(cleaned)
 
         if len(chunks) == 1:
-            await query.edit_message_text(text=chunks, reply_markup=reply_markup)
+            await query.edit_message_text(text=chunks[0], reply_markup=reply_markup)
             return
 
-        await query.edit_message_text(text=chunks)
+        await query.edit_message_text(text=chunks[0])
 
         for part in chunks[1:-1]:
             await query.message.reply_text(part)
@@ -952,14 +944,14 @@ async def safe_edit(query, text, reply_markup=None):
         else:
             logger.exception("BadRequest on edit_message_text: %s", e)
             try:
-                fallback = tr(normalize_lang(getattr(query.from_user, "language_code", "ru")), "ui_fallback")
+                fallback = "Произошла ошибка интерфейса. Попробуй ещё раз."
                 await query.message.reply_text(fallback, reply_markup=reply_markup)
             except Exception:
                 logger.exception("Fallback after safe_edit failed")
     except TelegramError as e:
         logger.exception("edit_message_text failed: %s", e)
         try:
-            fallback = tr(normalize_lang(getattr(query.from_user, "language_code", "ru")), "ui_fallback")
+            fallback = "Произошла ошибка интерфейса. Попробуй ещё раз."
             await query.message.reply_text(fallback, reply_markup=reply_markup)
         except Exception:
             logger.exception("Fallback after TelegramError in safe_edit failed")
